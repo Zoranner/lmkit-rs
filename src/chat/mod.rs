@@ -101,17 +101,26 @@ impl ChatProvider for OpenaiCompatChat {
 }
 
 pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn ChatProvider>> {
-    #[allow(unreachable_patterns)]
     match config.provider {
-        #[cfg(all(feature = "openai", feature = "chat"))]
+        #[cfg(feature = "openai")]
         Provider::OpenAI => Ok(Box::new(OpenaiCompatChat::new(config)?)),
-        #[cfg(all(feature = "aliyun", feature = "chat"))]
+        #[cfg(not(feature = "openai"))]
+        Provider::OpenAI => Err(Error::ProviderDisabled("openai".to_string())),
+
+        #[cfg(feature = "aliyun")]
         Provider::Aliyun => Ok(Box::new(OpenaiCompatChat::new(config)?)),
-        #[cfg(all(feature = "ollama", feature = "chat"))]
+        #[cfg(not(feature = "aliyun"))]
+        Provider::Aliyun => Err(Error::ProviderDisabled("aliyun".to_string())),
+
+        #[cfg(feature = "ollama")]
         Provider::Ollama => Ok(Box::new(OpenaiCompatChat::new(config)?)),
-        #[cfg(all(feature = "zhipu", feature = "chat"))]
+        #[cfg(not(feature = "ollama"))]
+        Provider::Ollama => Err(Error::ProviderDisabled("ollama".to_string())),
+
+        #[cfg(feature = "zhipu")]
         Provider::Zhipu => Ok(Box::new(OpenaiCompatChat::new(config)?)),
-        p => Err(Error::ProviderDisabled(p.to_string())),
+        #[cfg(not(feature = "zhipu"))]
+        Provider::Zhipu => Err(Error::ProviderDisabled("zhipu".to_string())),
     }
 }
 

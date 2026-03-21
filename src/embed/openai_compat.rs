@@ -163,7 +163,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/embeddings"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "data": [] })))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "data": [] })),
+            )
             .mount(&server)
             .await;
 

@@ -11,4 +11,4 @@
 | 语音识别 | `create_transcription_provider`（`audio`） | `TranscriptionProvider` | 未实现 |
 | 语音合成 | `create_speech_provider`（`audio`） | `SpeechProvider` | 未实现 |
 
-厂商由 `Provider` 与 Cargo feature 共同决定；未启用的组合在工厂阶段失败，不会发 HTTP。厂商与能力的矩阵见仓库根目录 `README.md`。重排序：表中未列出的厂商（如 OpenAI、Ollama）在启用 `rerank` 时走工厂会得到 `Unsupported`，与「未启用阿里云 / 智谱 feature」时的 `ProviderDisabled` 不同，见 [HTTP 文档](http-api.md) 中 Rerank 一节。
+厂商由 `Provider` 与 Cargo feature 共同决定；未启用的组合在工厂阶段失败，不会发 HTTP。厂商与能力的矩阵见仓库根目录 `README.md`。重排序：表中未列出的厂商（如 OpenAI、Ollama）在启用 `rerank` 时走工厂会得到 `Unsupported`，与「未启用阿里云 / 智谱 feature」时的 `ProviderDisabled` 不同，见 [HTTP 文档](http-api.md) 中 Rerank 一节。文生图：`Ollama` / `Zhipu` 为 `Unsupported`；启用 `image` 但未启用 `openai` / `aliyun` 仍选 OpenAI 或阿里云时为 `ProviderDisabled`，见该文档 Image 一节。

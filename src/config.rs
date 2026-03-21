@@ -40,11 +40,13 @@ impl FromStr for Provider {
     }
 }
 
+/// 厂商连接与调用参数。`model` 为透传字符串：不在此 crate 内校验名称是否在云端可用，由上游 HTTP 响应反映错误（常见为 [`crate::Error::Api`]）。
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
     pub provider: Provider,
     pub api_key: String,
     pub base_url: String,
+    /// 写入各模态请求体的模型标识；合法性与权限由厂商 API 判定，本库不做本地预检。
     pub model: String,
     pub dimension: Option<usize>,
     /// 覆盖该次请求使用的 HTTP 超时；`None` 表示由各模态默认值决定

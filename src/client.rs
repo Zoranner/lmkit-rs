@@ -75,7 +75,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/echo"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "hi" })))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "hi" })),
+            )
             .mount(&server)
             .await;
 
@@ -100,12 +102,9 @@ mod tests {
         let client = HttpClient::new(Duration::from_secs(5)).unwrap();
         let url = format!("{}/echo", server.uri());
         let err = client
-            .post_bearer_json::<EchoReq, EchoResp, _>(
-                &url,
-                "k",
-                &EchoReq { n: 0 },
-                |s| format!("wrapped:{s}"),
-            )
+            .post_bearer_json::<EchoReq, EchoResp, _>(&url, "k", &EchoReq { n: 0 }, |s| {
+                format!("wrapped:{s}")
+            })
             .await
             .unwrap_err();
 
@@ -142,7 +141,9 @@ mod tests {
         let server = MockServer::start().await;
         Mock::given(method("POST"))
             .and(path("/echo"))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "wrong": true })))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "wrong": true })),
+            )
             .mount(&server)
             .await;
 
@@ -164,7 +165,9 @@ mod tests {
             .and(header("Authorization", "Bearer secret-key"))
             .and(header("content-type", "application/json"))
             .and(body_json(serde_json::json!({ "n": 42 })))
-            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "ok" })))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "ok" })),
+            )
             .mount(&server)
             .await;
 

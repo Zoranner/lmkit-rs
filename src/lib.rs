@@ -18,7 +18,7 @@
 //!
 //! **重排序**：启用 `rerank` feature 时，仅 `Aliyun` 与 `Zhipu` 有实现；`OpenAI` / `Ollama` 会得到 [`Error::Unsupported`]（`capability` 为 `rerank`）。HTTP 路径分别为 `{base_url}/reranks` 与 `{base_url}/rerank`（阿里云为复数 `reranks`）。详见 `rerank` 模块文档（生成文档时需启用该 feature）。
 //!
-//! **文生图**：启用 `image` feature 时，OpenAI 为 `POST …/images/generations`，阿里云 DashScope 为 `POST …/services/aigc/multimodal-generation/generation`（`base_url` 为原生 API 根，非 `compatible-mode` 对话网关）。其它厂商得到 [`Error::Unsupported`]。详见 `image` 模块文档。
+//! **文生图**：启用 `image` feature 时，OpenAI 与阿里云路径见 `image` 模块；未启用对应厂商 feature 时工厂返回 [`Error::ProviderDisabled`]。`Ollama` / `Zhipu` 无实现，返回 [`Error::Unsupported`]（`capability` 为 `image`）。
 //!
 //! **音频**：启用 `audio` feature 后，工厂函数 `create_transcription_provider` 与 `create_speech_provider` 仍返回
 //! [`Error::Unsupported`]；trait `TranscriptionProvider` 与 `SpeechProvider` 仅占位，尚未对接任何厂商 HTTP。详见 `audio` 模块（启用 `audio` feature 后可在文档中打开）。

@@ -47,34 +47,41 @@ fn http_client(config: &ProviderConfig) -> Result<HttpClient> {
 pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn EmbedProvider>> {
     let dimension = config.dimension.ok_or(Error::MissingConfig("dimension"))?;
 
-    #[allow(unreachable_patterns)]
     match config.provider {
-        #[cfg(all(feature = "openai", feature = "embed"))]
+        #[cfg(feature = "openai")]
         Provider::OpenAI => Ok(Box::new(openai_compat::OpenaiCompatEmbed::new(
             config,
             dimension,
             http_client(config)?,
         ))),
-        #[cfg(all(feature = "aliyun", feature = "embed"))]
+        #[cfg(not(feature = "openai"))]
+        Provider::OpenAI => Err(Error::ProviderDisabled("openai".to_string())),
+
+        #[cfg(feature = "aliyun")]
         Provider::Aliyun => Ok(Box::new(openai_compat::OpenaiCompatEmbed::new(
             config,
             dimension,
             http_client(config)?,
         ))),
-        #[cfg(all(feature = "ollama", feature = "embed"))]
+        #[cfg(not(feature = "aliyun"))]
+        Provider::Aliyun => Err(Error::ProviderDisabled("aliyun".to_string())),
+
+        #[cfg(feature = "ollama")]
         Provider::Ollama => Ok(Box::new(openai_compat::OpenaiCompatEmbed::new(
             config,
             dimension,
             http_client(config)?,
         ))),
-        #[cfg(all(feature = "zhipu", feature = "embed"))]
+        #[cfg(not(feature = "ollama"))]
+        Provider::Ollama => Err(Error::ProviderDisabled("ollama".to_string())),
+
+        #[cfg(feature = "zhipu")]
         Provider::Zhipu => Ok(Box::new(zhipu::ZhipuEmbed::new(
             config,
             dimension,
             http_client(config)?,
         ))),
-        #[cfg(all(feature = "embed", not(feature = "zhipu")))]
+        #[cfg(not(feature = "zhipu"))]
         Provider::Zhipu => Err(Error::ProviderDisabled("zhipu".to_string())),
-        p => Err(Error::ProviderDisabled(p.to_string())),
     }
 }

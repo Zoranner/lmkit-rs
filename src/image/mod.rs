@@ -5,7 +5,7 @@
 //! - **`OpenAI`**（`openai` + `image`）：`POST {base_url}/images/generations`，OpenAI 兼容；`n` 固定为 `1`，`size` 由 [`ImageSize`] 映射为 `512x512` 等字符串。成功时取 `data[0]` 的 `url` 或 `b64_json`（解码为 [`ImageOutput::Bytes`]）。
 //! - **`Aliyun`**（`aliyun` + `image`）：`POST {base_url}/services/aigc/multimodal-generation/generation`。此处 **`base_url` 一般为 DashScope 原生根**（如 `https://dashscope.aliyuncs.com/api/v1`），与对话用的 `compatible-mode/v1` **不是同一路径**。请求体为 DashScope multimodal 格式，尺寸为 `宽*高`（星号）。详见实现文件中的结构体注释。
 //!
-//! 其它厂商：工厂返回 [`Error::Unsupported`]，`capability` 为 `"image"`。
+//! 启用 `image` 但未启用 `openai` / `aliyun` 时，仍选择 `OpenAI` / `Aliyun` 会得到 [`Error::ProviderDisabled`]。**`Ollama`**、**`Zhipu`** 无文生图实现，工厂返回 [`Error::Unsupported`]（`capability` 为 `"image"`）。
 //!
 //! # 鉴权
 //!
@@ -49,15 +49,92 @@ pub trait ImageProvider: Send + Sync {
 }
 
 pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn ImageProvider>> {
-    #[allow(unreachable_patterns)]
     match config.provider {
-        #[cfg(all(feature = "openai", feature = "image"))]
+        #[cfg(feature = "openai")]
         Provider::OpenAI => Ok(Box::new(openai_compat::OpenaiCompatImage::new(config)?)),
-        #[cfg(all(feature = "aliyun", feature = "image"))]
+        #[cfg(not(feature = "openai"))]
+        Provider::OpenAI => Err(Error::ProviderDisabled("openai".to_string())),
+
+        #[cfg(feature = "aliyun")]
         Provider::Aliyun => Ok(Box::new(aliyun::AliyunQwenImage::new(config)?)),
-        p => Err(Error::Unsupported {
-            provider: p.to_string(),
+        #[cfg(not(feature = "aliyun"))]
+        Provider::Aliyun => Err(Error::ProviderDisabled("aliyun".to_string())),
+
+        Provider::Ollama => Err(Error::Unsupported {
+            provider: config.provider.to_string(),
             capability: "image",
         }),
+        Provider::Zhipu => Err(Error::Unsupported {
+            provider: config.provider.to_string(),
+            capability: "image",
+        }),
+    }
+}
+
+#[cfg(test)]
+mod factory_tests {
+    use super::create;
+    use crate::config::{Provider, ProviderConfig};
+    use crate::error::Error;
+
+    #[cfg(feature = "ollama")]
+    #[test]
+    fn ollama_is_unsupported() {
+        let cfg = ProviderConfig::new(Provider::Ollama, "k", "http://localhost/v1", "m");
+        match create(&cfg) {
+            Err(Error::Unsupported {
+                provider,
+                capability,
+            }) => {
+                assert_eq!(provider, "ollama");
+                assert_eq!(capability, "image");
+            }
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected Unsupported, got {:?}", e),
+        }
+    }
+
+    #[cfg(feature = "zhipu")]
+    #[test]
+    fn zhipu_is_unsupported() {
+        let cfg = ProviderConfig::new(Provider::Zhipu, "k", "https://x/v1", "m");
+        match create(&cfg) {
+            Err(Error::Unsupported {
+                provider,
+                capability,
+            }) => {
+                assert_eq!(provider, "zhipu");
+                assert_eq!(capability, "image");
+            }
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected Unsupported, got {:?}", e),
+        }
+    }
+
+    #[cfg(not(feature = "openai"))]
+    #[test]
+    fn openai_disabled_without_openai_feature() {
+        let cfg = ProviderConfig::new(Provider::OpenAI, "k", "https://api.openai.com/v1", "dall-e-3");
+        match create(&cfg) {
+            Err(Error::ProviderDisabled(s)) => assert_eq!(s, "openai"),
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected ProviderDisabled, got {:?}", e),
+        }
+    }
+
+    #[cfg(not(feature = "aliyun"))]
+    #[test]
+    fn aliyun_disabled_without_aliyun_feature() {
+        let cfg = ProviderConfig::new(
+            Provider::Aliyun,
+            "k",
+            "https://dashscope.aliyuncs.com/api/v1",
+            "qwen-image-plus",
+        );
+        match create(&cfg) {
+            Err(Error::ProviderDisabled(s)) => assert_eq!(s, "aliyun"),
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected ProviderDisabled, got {:?}", e),
+        }
     }
 }

@@ -1,33 +1,35 @@
 # 后续工作与维护备忘
 
-本文件跟踪实现缺口、工程化事项与发版前检查。设计原则与错误语义约定以 [设计准则](docs/design-guidelines.md) 为准；对外能力矩阵以根目录 [README](README.md) 为准。与 README 中已标 ❌/🔧、但尚未立项的具体厂商能力，不默认排进下文「待办」，需要时单独开任务评估 HTTP 契约与 feature 组合。
+本文件用于跟踪实现缺口、工程化事项与发版前检查。设计约定见 [设计准则](docs/design-guidelines.md)；能力矩阵与快速接入见根目录 [README](README.md)。README 中已标为未支持或需专用契约的厂商能力，若要落地须单独评估 HTTP 与 feature 组合后再写入此处。
 
-## 已完成（摘要）
+## 当前状态（摘要）
 
-对话、向量、重排序、文生图等模态在默认或全 feature 组合下已有相应实现；`HttpClient::post_bearer_json`、chat、embed（含 OpenAI 兼容与智谱）、rerank（阿里云与智谱）、图像（OpenAI 与阿里云）等路径已配 wiremock 或模块内单测覆盖成功体、部分 4xx、解析失败与请求体验证。`docs/` 下的接口索引、HTTP 汇总、Rust API 说明与设计准则已建立；crate 根与各模态的 rustdoc 已补充 feature 与行为说明。重排序工厂已对 `OpenAI` / `Ollama` 使用 `Unsupported`，并在 `rerank::factory_tests` 中覆盖与 `cargo test --features rerank,openai` 下的 `ProviderDisabled` 路径；`CHANGELOG.md` 已记录该行为变更。
+对话、向量、重排序、文生图等模态在对应 feature 下已有实现；`HttpClient::post_bearer_json` 与各工厂路径配合 wiremock 或模块内测试，覆盖了成功体、部分 4xx、解析失败与请求体验证。`docs/` 下的接口索引、HTTP 汇总、Rust API 说明与设计准则已建立；crate 与各子模块 rustdoc 已补充 feature 与行为说明。各模态工厂对 `ProviderDisabled` / `Unsupported` 的划分与 `rerank` 一致：`chat` / `embed` / `image` 的 `create` 已用互斥 `cfg` 分支去掉 `#[allow(unreachable_patterns)]`；文生图对未启用厂商 feature 的 `OpenAI` / `Aliyun` 返回 `ProviderDisabled`（见 [CHANGELOG](CHANGELOG.md)）。`image` 与 `rerank` 一样配有工厂级单测；占位能力 `audio` 仍为 `Unsupported`。
 
-## 高优先级
+## 近期值得做
 
-- [ ] **错误模型**：`rerank` 工厂已对 OpenAI/Ollama 使用 `Unsupported`（见 `CHANGELOG.md`）。其余模态（如 `chat` / `embed` / `image`）若仍存在「无实现却落 `ProviderDisabled`」的边角，可逐项对齐；是否需要为 `ProviderDisabled` 补充 `capability` 等字段仍待整体评估。
+仓库内尚无 CI（例如 GitHub Actions）。建议至少门禁 `cargo test --all-features`，与设计准则中「全 feature 测试可重复执行」一致；可按需叠加 `cargo doc --all-features --no-deps`、`cargo clippy --all-features -D warnings`、`cargo fmt --check`。
 
-## 中优先级（质量与工程）
+## 质量与文档
 
-- [ ] **`#[allow(unreachable_patterns)]`**：现见于 `chat` / `embed` / `image` 的工厂 `match`（`rerank` 已无此属性）。评估用小宏、`cfg` 拆分或生成式分支，在全 feature 下去掉压制同时保持可读与穷尽性检查。
-- [ ] **CI**：仓库内尚无持续集成配置。建议至少门禁 `cargo test --all-features`（与设计准则中「全 feature 测试可重复执行」一致）；可选叠加 `cargo doc --all-features --no-deps`、`cargo clippy --all-features -D warnings`。
-- [ ] **变更记录**：已有 `CHANGELOG.md`（Unreleased）；发版时补齐版本号并持续写入用户可见变化，与 README / `docs/` 交叉引用。
+`CHANGELOG.md` 的 Unreleased 需在发版时写入版本号并持续记录用户可见变更；与 README、`docs/` 交叉核对，避免矩阵或错误说明滞后。
 
-## 低优先级（能力与规模）
+新增或调整 `Provider` 枚举、工厂分支或错误变体时，按设计准则回归区分 `ProviderDisabled` 与 `Unsupported`；若要在 `ProviderDisabled` 上附加 `capability` 等字段，须先评估破坏性与文档成本。
 
-- [ ] **弹性**：可选重试、429/5xx 退避、可选注入或共享 `reqwest::Client`（准则中列为非目标，采纳前需更新准则并单独设计，避免与现有「单次 JSON」语义混同）。
-- [ ] **流式与 multipart**：与现有 `post_bearer_json` 不同的 trait 与请求路径需单独设计（如流式 chat、语音/大图等多部分请求）。
-- [ ] **audio**：对接具体厂商，或长期保持占位并在 README / rustdoc 中明确冻结说明（与当前准则一致即可）。
-- [ ] **examples/**：增加多厂商或多 feature 的示例工程，便于接入与人工对照（与单测互补）。
+## 能力与架构（中长期）
 
-## 发布 crates.io 时再集中处理
+下列项在设计准则中目前列为非目标或占位；采纳前须更新准则并单独设计 trait / HTTP 路径，避免与现有「单次 JSON」语义混同：可选重试、429/5xx 退避、共享或注入 `reqwest::Client`；流式 chat、multipart（语音/大图等）。
 
-- [ ] 声明 **MSRV**（`Cargo.toml` 的 `rust-version` 与/或 README）。
-- [ ] 核对 **docs.rs** 上各 feature 组合下公开 trait、工厂与类型是否可见，并与 `docs/` 索引一致。
+`audio` 仍为类型与工厂占位，可择一对接具体厂商，或长期冻结并在 README / rustdoc 中保持「未接远端」的显式说明。
 
-## 日常维护时可顺手核对
+增加 `examples/` 下的最小可运行示例（多厂商或多 feature 组合），与单测互补，便于接入与人工对照。
 
-README 能力矩阵、`docs/interfaces.md` 与工厂实际分支是否一致；厂商侧 API 变更时以官方文档为准并考虑在变更记录中提示调用方。
+## 发布 crates.io 时集中处理
+
+在 `Cargo.toml` 中声明 **MSRV**（`rust-version`），并在 README 或文档中写明；按需补齐 `repository`、`documentation`、`homepage` 等元数据，便于 docs.rs 与依赖方溯源。
+
+发版前在本地或 CI 用 `cargo doc --all-features --no-deps` 核对公开 trait、工厂与类型在各 feature 下的可见性，并与 `docs/interfaces.md`、README 矩阵一致。
+
+## 日常维护
+
+变更厂商 HTTP 契约或矩阵描述时，对照工厂实际分支与 `docs/interfaces.md`；以厂商官方文档为准，并在变更记录中提示调用方核对。
