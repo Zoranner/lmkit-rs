@@ -5,7 +5,7 @@
 //! - **`OpenAI`**（`openai` + `image`）：`POST {base_url}/images/generations`，OpenAI 兼容；`n` 固定为 `1`，`size` 由 [`ImageSize`] 映射为 `512x512` 等字符串。成功时取 `data[0]` 的 `url` 或 `b64_json`（解码为 [`ImageOutput::Bytes`]）。
 //! - **`Aliyun`**（`aliyun` + `image`）：`POST {base_url}/services/aigc/multimodal-generation/generation`。此处 **`base_url` 一般为 DashScope 原生根**（如 `https://dashscope.aliyuncs.com/api/v1`），与对话用的 `compatible-mode/v1` **不是同一路径**。请求体为 DashScope multimodal 格式，尺寸为 `宽*高`（星号）。详见实现文件中的结构体注释。
 //!
-//! 启用 `image` 但未启用 `openai` / `aliyun` 时，仍选择 `OpenAI` / `Aliyun` 会得到 [`Error::ProviderDisabled`]。**`Ollama`**、**`Zhipu`** 无文生图实现，工厂返回 [`Error::Unsupported`]（`capability` 为 `"image"`）。
+//! 启用 `image` 但未启用 `openai` / `aliyun` 时，仍选择 `OpenAI` / `Aliyun` 会得到 [`Error::ProviderDisabled`]。**`Ollama`**、**`Zhipu`**、**`Anthropic`** 无文生图实现，工厂返回 [`Error::Unsupported`]（`capability` 为 `"image"`）；未编译 `anthropic` feature 时选 `Anthropic` 为 [`Error::ProviderDisabled`]。
 //!
 //! # 鉴权
 //!
@@ -64,6 +64,15 @@ pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn ImageProvider>> 
             provider: config.provider.to_string(),
             capability: "image",
         }),
+
+        #[cfg(feature = "anthropic")]
+        Provider::Anthropic => Err(Error::Unsupported {
+            provider: config.provider.to_string(),
+            capability: "image",
+        }),
+        #[cfg(not(feature = "anthropic"))]
+        Provider::Anthropic => Err(Error::ProviderDisabled("anthropic".to_string())),
+
         Provider::Zhipu => Err(Error::Unsupported {
             provider: config.provider.to_string(),
             capability: "image",
@@ -108,6 +117,39 @@ mod factory_tests {
             }
             Ok(_) => panic!("expected error"),
             Err(e) => panic!("expected Unsupported, got {:?}", e),
+        }
+    }
+
+    #[cfg(feature = "anthropic")]
+    #[test]
+    fn anthropic_is_unsupported() {
+        let cfg = ProviderConfig::new(Provider::Anthropic, "k", "https://x/v1", "m");
+        match create(&cfg) {
+            Err(Error::Unsupported {
+                provider,
+                capability,
+            }) => {
+                assert_eq!(provider, "anthropic");
+                assert_eq!(capability, "image");
+            }
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected Unsupported, got {:?}", e),
+        }
+    }
+
+    #[cfg(not(feature = "anthropic"))]
+    #[test]
+    fn anthropic_disabled_without_anthropic_feature() {
+        let cfg = ProviderConfig::new(
+            Provider::Anthropic,
+            "k",
+            "https://api.anthropic.com/v1",
+            "claude-3-opus",
+        );
+        match create(&cfg) {
+            Err(Error::ProviderDisabled(s)) => assert_eq!(s, "anthropic"),
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected ProviderDisabled, got {:?}", e),
         }
     }
 

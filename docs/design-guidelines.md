@@ -8,11 +8,11 @@
 
 ## Feature 与工厂
 
-厂商维度与模态维度通过 Cargo feature 正交组合。只有两者同时满足时，对应工厂才参与编译；运行时若配置与编译结果不匹配，应在工厂阶段返回明确错误，而不是发请求后再以模糊方式失败。`ProviderDisabled` 用于「当前编译配置下这条分支不可用」，例如未启用某厂商 feature 或某模态 feature。`Unsupported` 用于「该模态已编译，但该厂商在此模态没有实现，或能力仍为占位（如语音工厂）」。对照实例：启用 `rerank` 时，`OpenAI` / `Ollama` 无重排序实现，工厂应返回 `Unsupported`；仅当未启用 `aliyun` / `zhipu` feature 却仍选择对应厂商时，才属 `ProviderDisabled`。若未来要在类型上进一步区分二者，属于破坏性较小的演进方向，改前须更新本文档与 `rust-api.md` 中的错误说明。
+厂商维度与模态维度通过 Cargo feature 正交组合。只有两者同时满足时，对应工厂才参与编译；运行时若配置与编译结果不匹配，应在工厂阶段返回明确错误，而不是发请求后再以模糊方式失败。`ProviderDisabled` 用于「当前编译配置下这条分支不可用」，例如未启用某厂商 feature 或某模态 feature。`Unsupported` 用于「该模态已编译，但该厂商在此模态没有实现，或能力仍为占位（如语音工厂）」。对照实例：启用 `rerank` 时，`OpenAI` / `Ollama` / `Anthropic` 无重排序实现，工厂应返回 `Unsupported`；仅当未启用 `aliyun` / `zhipu` feature 却仍选择对应厂商时，才属 `ProviderDisabled`。未启用 `anthropic` feature 却选 `Anthropic` 时，在各工厂为 `ProviderDisabled`。若未来要在类型上进一步区分二者，属于破坏性较小的演进方向，改前须更新本文档与 `rust-api.md` 中的错误说明。
 
 ## 配置与 HTTP 约定
 
-对外配置集中在 `ProviderConfig`：厂商枚举、`api_key`、`base_url`、模型名、嵌入维数（嵌入必填）、可选超时。路径拼接统一对 `base_url` 做尾部斜杠规范化后再接具体 segment，避免双斜杠或遗漏；各模态文档中须写明真实 URL 形态（包括阿里云 rerank 使用 `reranks` 等与「直觉不一致」的细节）。鉴权默认采用 `Authorization: Bearer`，是否接受空密钥由上游网关决定，本库不假装替用户做本地校验，但应在 rustdoc 中写明这一行为，以免本地网关与云厂商表现不同造成困惑。
+对外配置集中在 `ProviderConfig`：厂商枚举、`api_key`、`base_url`、模型名、嵌入维数（嵌入必填）、可选超时。路径拼接统一对 `base_url` 做尾部斜杠规范化后再接具体 segment，避免双斜杠或遗漏；各模态文档中须写明真实 URL 形态（包括阿里云 rerank 使用 `reranks` 等与「直觉不一致」的细节）。鉴权默认采用 `Authorization: Bearer`；**Anthropic Messages 兼容**等例外使用 `x-api-key` 与版本头（见 `HttpClient::post_json_with_headers` 与各模态 rustdoc）；同一实现可按兼容契约对接官方或第三方网关。是否接受空密钥由上游网关决定，本库不假装替用户做本地校验，但应在 rustdoc 中写明这一行为，以免本地网关与云厂商表现不同造成困惑。
 
 `model` 字段视为**透传**：不在库内维护各厂商可用模型清单，也不做「该厂商是否支持此模型」的预检。名称是否合法、是否有权限、是否在所选地域开通，一律以远端响应为准；典型失败形态为 HTTP 非 2xx，映射为 `Error::Api`（响应体经各实现整理后写入 `message`）。若将来引入可选预检或模型表，须在准则中单独立项，并明确与现有「薄封装」边界的关系，避免维护者误以为必须在库内同步全量模型目录。
 

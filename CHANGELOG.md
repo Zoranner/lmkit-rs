@@ -4,6 +4,8 @@
 
 ### Added
 
+- **Anthropic**：新增 Cargo feature `anthropic` 与 `Provider::Anthropic`。`chat` 模态实现 **Anthropic Messages 兼容**（参考 [官方 Messages API](https://docs.anthropic.com/en/api/messages)：`POST {base_url}/messages`，`x-api-key` 与 `anthropic-version`），便于同一套代码对接官方及兼容网关（含常见 Coding Plan 通道，取决于对方是否遵循同一契约）。`embed` / `rerank` / `image` 工厂返回 `Unsupported`。共享客户端新增 `HttpClient::post_json_with_headers`。对话实现按文件拆分：`chat/openai_compat.rs`、`chat/anthropic_compat.rs`（`AnthropicCompatChat`）。
+
 - GitHub Actions：推送 `v*` 标签时运行 `fmt`、`clippy`（全 feature）、`test`（全 feature），通过后发布至 crates.io（需配置 `CARGO_ACCESS_TOKEN`）；工具链使用 `dtolnay/rust-toolchain@stable`（替代已归档的 `actions-rs/toolchain`）。
 
 ### Changed

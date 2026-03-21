@@ -10,6 +10,7 @@ use std::time::Duration;
 pub enum Provider {
     OpenAI,
     Aliyun,
+    Anthropic,
     Ollama,
     Zhipu,
 }
@@ -19,6 +20,7 @@ impl fmt::Display for Provider {
         let s = match self {
             Provider::OpenAI => "openai",
             Provider::Aliyun => "aliyun",
+            Provider::Anthropic => "anthropic",
             Provider::Ollama => "ollama",
             Provider::Zhipu => "zhipu",
         };
@@ -33,6 +35,7 @@ impl FromStr for Provider {
         match s.trim().to_ascii_lowercase().as_str() {
             "openai" => Ok(Provider::OpenAI),
             "aliyun" => Ok(Provider::Aliyun),
+            "anthropic" => Ok(Provider::Anthropic),
             "ollama" => Ok(Provider::Ollama),
             "zhipu" => Ok(Provider::Zhipu),
             other => Err(crate::error::Error::UnknownProvider(other.to_string())),
@@ -80,6 +83,10 @@ mod tests {
     fn provider_from_str_case_insensitive() {
         assert_eq!(Provider::from_str("openai").unwrap(), Provider::OpenAI);
         assert_eq!(Provider::from_str("Aliyun").unwrap(), Provider::Aliyun);
+        assert_eq!(
+            Provider::from_str("Anthropic").unwrap(),
+            Provider::Anthropic
+        );
     }
 
     #[test]

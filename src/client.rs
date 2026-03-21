@@ -1,4 +1,4 @@
-//! 共享 HTTP 客户端（Bearer + JSON）
+//! 共享 HTTP 客户端：JSON POST，默认 Bearer，或 [`HttpClient::post_json_with_headers`] 自定义请求头（如 Anthropic `x-api-key`）。
 
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
@@ -38,6 +38,41 @@ impl HttpClient {
             .json(body)
             .send()
             .await?;
+
+        let status = response.status();
+        let body_text = response.text().await?;
+
+        if !status.is_success() {
+            return Err(Error::Api {
+                status: status.as_u16(),
+                message: map_err_body(body_text),
+            });
+        }
+
+        serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))
+    }
+
+    /// POST JSON，自定义请求头（不含 `Content-Type`，本方法会设置 `application/json`）。
+    pub async fn post_json_with_headers<Req, Resp, F>(
+        &self,
+        url: &str,
+        headers: &[(&str, &str)],
+        body: &Req,
+        map_err_body: F,
+    ) -> Result<Resp>
+    where
+        Req: Serialize + ?Sized,
+        Resp: DeserializeOwned,
+        F: FnOnce(String) -> String,
+    {
+        let mut req = self
+            .inner
+            .post(url)
+            .header("Content-Type", "application/json");
+        for (name, value) in headers {
+            req = req.header(*name, *value);
+        }
+        let response = req.json(body).send().await?;
 
         let status = response.status();
         let body_text = response.text().await?;
@@ -177,5 +212,60 @@ mod tests {
             .post_bearer_json::<EchoReq, EchoResp, _>(&url, "secret-key", &EchoReq { n: 42 }, |s| s)
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn post_json_with_headers_success_and_custom_headers() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/m"))
+            .and(header("x-api-key", "secret"))
+            .and(header("anthropic-version", "2023-06-01"))
+            .and(header("content-type", "application/json"))
+            .and(body_json(serde_json::json!({ "n": 7 })))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "ok" })),
+            )
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/m", server.uri());
+        let headers = [("x-api-key", "secret"), ("anthropic-version", "2023-06-01")];
+        let out: EchoResp = client
+            .post_json_with_headers(&url, &headers, &EchoReq { n: 7 }, |s| s)
+            .await
+            .unwrap();
+        assert_eq!(out.msg, "ok");
+    }
+
+    #[tokio::test]
+    async fn post_json_with_headers_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/m"))
+            .respond_with(ResponseTemplate::new(403).set_body_string("denied"))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/m", server.uri());
+        let err = client
+            .post_json_with_headers::<EchoReq, EchoResp, _>(
+                &url,
+                &[("x-api-key", "k")],
+                &EchoReq { n: 1 },
+                |s| s,
+            )
+            .await
+            .unwrap_err();
+
+        match err {
+            Error::Api { status, message } => {
+                assert_eq!(status, 403);
+                assert_eq!(message, "denied");
+            }
+            e => panic!("unexpected {e:?}"),
+        }
     }
 }
