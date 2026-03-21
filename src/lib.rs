@@ -8,30 +8,30 @@ mod config;
 mod error;
 mod util;
 
+#[cfg(feature = "audio")]
+mod audio;
 #[cfg(feature = "chat")]
 mod chat;
 #[cfg(feature = "embed")]
 mod embed;
-#[cfg(feature = "rerank")]
-mod rerank;
 #[cfg(feature = "image")]
 mod image;
-#[cfg(feature = "audio")]
-mod audio;
+#[cfg(feature = "rerank")]
+mod rerank;
 
 pub use config::{Provider, ProviderConfig};
 pub use error::{Error, Result};
 
+#[cfg(feature = "audio")]
+pub use audio::{AudioFormat, SpeechProvider, TranscriptionProvider};
 #[cfg(feature = "chat")]
 pub use chat::ChatProvider;
 #[cfg(feature = "embed")]
 pub use embed::EmbedProvider;
-#[cfg(feature = "rerank")]
-pub use rerank::{RerankItem, RerankProvider};
 #[cfg(feature = "image")]
 pub use image::{ImageOutput, ImageProvider, ImageSize};
-#[cfg(feature = "audio")]
-pub use audio::{AudioFormat, SpeechProvider, TranscriptionProvider};
+#[cfg(feature = "rerank")]
+pub use rerank::{RerankItem, RerankProvider};
 
 /// 创建 Chat Provider（OpenAI 兼容 `POST .../chat/completions`）
 #[cfg(feature = "chat")]
@@ -51,7 +51,7 @@ pub fn create_rerank_provider(config: &ProviderConfig) -> Result<Box<dyn RerankP
     rerank::create(config)
 }
 
-/// 创建图像生成 Provider（尚未实现具体厂商）
+/// 创建图像生成 Provider（OpenAI：`.../images/generations`；阿里云：`.../services/aigc/multimodal-generation/generation`）
 #[cfg(feature = "image")]
 pub fn create_image_provider(config: &ProviderConfig) -> Result<Box<dyn ImageProvider>> {
     image::create(config)

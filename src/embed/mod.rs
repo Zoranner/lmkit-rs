@@ -26,9 +26,7 @@ fn http_client(config: &ProviderConfig) -> Result<HttpClient> {
 }
 
 pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn EmbedProvider>> {
-    let dimension = config
-        .dimension
-        .ok_or(Error::MissingConfig("dimension"))?;
+    let dimension = config.dimension.ok_or(Error::MissingConfig("dimension"))?;
 
     #[allow(unreachable_patterns)]
     match config.provider {

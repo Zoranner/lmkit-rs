@@ -2,6 +2,8 @@
 
 用同一套配置在 Rust 里调用多家云的 **对话**、**向量**、**重排序** API（HTTPS，默认 rustls）。按需打开 Cargo feature，用不到的厂商不会编进产物。
 
+各能力的 Rust API 与 HTTP 约定已整理在 [docs 目录](docs/README.md)（含 [接口一览](docs/interfaces.md)）。
+
 ## 🚀 快速接入
 
 在 `Cargo.toml` 里写上依赖和 feature（路径发布时改成你的实际路径或 crates.io 版本号）：
@@ -46,16 +48,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 同一能力在不同云上都是「填 `base_url` + 模型名」，由对方是否提供 OpenAI 兼容接口决定；embed 一般要设置 `dimension`（维数依模型而定）。
 
-| 厂商 | Chat | Embed | Rerank |
-|:---:|:---:|:---:|:---:|
-| OpenAI | ✅ | ✅ | ❌ |
-| 阿里云 | ✅ | ✅ | ✅ |
-| Ollama | ✅ | ✅ | ❌ |
-| 智谱 | ✅ | ✅ 🔧 | ✅ |
+| 厂商 | Chat | Embed | Rerank | Image |
+|:---:|:---:|:---:|:---:|:---:|
+| OpenAI | ✅ | ✅ | ❌ | ✅ |
+| 阿里云 | ✅ | ✅ | ✅ | ✅ 🔧 |
+| Ollama | ✅ | ✅ | ❌ | ❌ |
+| 智谱 | ✅ | ✅ 🔧 | ✅ | ❌ |
 
-图例：🔧 表示「专用请求体」——请求 JSON 与标准 OpenAI 兼容格式不完全一致；上表仅智谱 Embed 使用该标记（例如不传 `dimensions`）。
+图例：🔧 表示「专用请求体或与 OpenAI 路径不一致」。智谱 Embed 等如此；**阿里云文生图**使用 DashScope 原生 `POST .../services/aigc/multimodal-generation/generation`，不是 `compatible-mode/v1` 下的 OpenAI 文生图路径。
 
-图像生成、语音识别与合成在库里有 trait 和工厂入口，具体厂商对接仍在迭代；需要时可开 `image` / `audio` feature 查看 API 形状。
+图像生成：`openai` + `image` 时，`base_url` 一般为 `https://api.openai.com/v1`，走 `.../images/generations`。`aliyun` + `image` 时，`base_url` 需为 **`https://dashscope.aliyuncs.com/api/v1`**（或新加坡等地域的 `https://dashscope-intl.aliyuncs.com/api/v1`），`model` 填百炼文生图模型名（如 `qwen-image-plus`），与对话用的 `compatible-mode/v1` 网关不同。语音识别与合成仍为占位，可开 `audio` 查看类型。
 
 ## ⚙️ 常用 feature 组合
 
@@ -65,6 +67,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | 全开厂商与能力 | `["full"]` 或 `["all"]` |
 | 仅本地 Ollama | `["ollama", "chat", "embed"]` |
 | 阿里云 rerank | 在已有 embed/chat 上再加 `aliyun` 与 `rerank` |
+| OpenAI 文生图 | `["openai", "image"]`（可与 `chat`、`embed` 等组合） |
+| 阿里云文生图（千问图像等） | `["aliyun", "image"]`，`base_url` 见上文 |
 
 厂商 feature（`openai` / `aliyun` / `ollama` / `zhipu`）与模态 feature（`chat` / `embed` / `rerank` / `image` / `audio`）要同时满足才会在对应工厂里可用；配错组合会得到明确的 `Error`，而不是静默失败。
 

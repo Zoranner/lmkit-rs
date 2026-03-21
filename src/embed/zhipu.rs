@@ -3,9 +3,9 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+use super::EmbedProvider;
 use crate::client::HttpClient;
 use crate::config::ProviderConfig;
-use super::EmbedProvider;
 use crate::error::Result;
 use crate::util::normalize_for_embedding;
 

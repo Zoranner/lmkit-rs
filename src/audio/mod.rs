@@ -23,7 +23,9 @@ pub trait SpeechProvider: Send + Sync {
     async fn synthesize(&self, text: &str, voice: &str) -> Result<Vec<u8>>;
 }
 
-pub(crate) fn create_transcription(config: &ProviderConfig) -> Result<Box<dyn TranscriptionProvider>> {
+pub(crate) fn create_transcription(
+    config: &ProviderConfig,
+) -> Result<Box<dyn TranscriptionProvider>> {
     Err(Error::Unsupported {
         provider: config.provider.to_string(),
         capability: "transcription",
