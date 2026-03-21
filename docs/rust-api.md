@@ -16,17 +16,19 @@
 
 `Error` 变体包括：未知厂商名、`ProviderDisabled`、`Unsupported`、`MissingConfig`、HTTP 非成功（`Api`，含状态码与消息）、HTTP 层错误（`Http`，来自 `reqwest`）、JSON 解析失败（`Parse`）、响应缺字段（`MissingField`）。
 
+`ProviderDisabled` 与 `Unsupported` 的划分以源码中 `Error` 的 rustdoc（`src/error.rs`）为准；也可用 `cargo doc --open` 查看。重排序（`create_rerank_provider`）下：`OpenAI` / `Ollama` 为 `Unsupported`（`capability: "rerank"`）；未启用阿里云或智谱 feature 却选择该厂商时为 `ProviderDisabled`。
+
 `Result<T>` 为 `std::result::Result<T, Error>`。
 
 ## 工厂函数
 
-均在启用对应模态 feature 时可用；同时需启用厂商 feature，否则返回 `ProviderDisabled` 或 `Unsupported`。
+均在启用对应模态 feature 时可用；是否还需启用厂商 feature、以及失败时返回 `ProviderDisabled` 还是 `Unsupported`，依各工厂与能力矩阵而定（见上节及下文各 `create_*` 说明）。
 
 `create_chat_provider(&ProviderConfig) -> Result<Box<dyn ChatProvider>>`（feature `chat`）。
 
 `create_embed_provider(&ProviderConfig) -> Result<Box<dyn EmbedProvider>>`（feature `embed`）。
 
-`create_rerank_provider(&ProviderConfig) -> Result<Box<dyn RerankProvider>>`（feature `rerank`）。
+`create_rerank_provider(&ProviderConfig) -> Result<Box<dyn RerankProvider>>`（feature `rerank`）。仅阿里云与智谱有实现；`OpenAI` / `Ollama` 返回 `Unsupported`；选了阿里云或智谱但未启用对应厂商 feature 时返回 `ProviderDisabled`。
 
 `create_image_provider(&ProviderConfig) -> Result<Box<dyn ImageProvider>>`（feature `image`）。
 

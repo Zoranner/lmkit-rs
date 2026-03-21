@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 | OpenAI 文生图 | `["openai", "image"]`（可与 `chat`、`embed` 等组合） |
 | 阿里云文生图（千问图像等） | `["aliyun", "image"]`，`base_url` 见上文 |
 
-厂商 feature（`openai` / `aliyun` / `ollama` / `zhipu`）与模态 feature（`chat` / `embed` / `rerank` / `image` / `audio`）要同时满足才会在对应工厂里可用；配错组合会得到明确的 `Error`，而不是静默失败。
+厂商 feature（`openai` / `aliyun` / `ollama` / `zhipu`）与模态 feature（`chat` / `embed` / `rerank` / `image` / `audio`）要同时满足才会在对应工厂里可用；配错组合会得到明确的 `Error`，而不是静默失败。若某能力在矩阵中为 ❌（例如 OpenAI 的 Rerank），启用该模态 feature 后工厂会对该厂商返回 `Error::Unsupported`，而不是 `ProviderDisabled`；未把对应厂商编进产物时仍为 `ProviderDisabled`。细节见 [Rust 公共 API](docs/rust-api.md) 与 [变更记录](CHANGELOG.md)。
 
 ## 📜 许可证
 

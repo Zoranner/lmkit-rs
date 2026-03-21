@@ -2,7 +2,7 @@
 //!
 //! # 支持的厂商
 //!
-//! 仅 **`Aliyun`** 与 **`Zhipu`**（均须启用 `rerank` 与对应厂商 feature）。其它厂商在工厂阶段返回 [`Error::ProviderDisabled`]。
+//! 仅 **`Aliyun`** 与 **`Zhipu`**（均须启用 `rerank` 与对应厂商 feature）。未启用对应厂商 feature 时选择阿里云或智谱会得到 [`Error::ProviderDisabled`]。**`OpenAI`** 与 **`Ollama`** 在本模态无实现，工厂返回 [`Error::Unsupported`]（`capability` 为 `"rerank"`）。
 //!
 //! # HTTP 路径（注意阿里云为复数）
 //!
@@ -64,6 +64,76 @@ pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn RerankProvider>>
             config,
             http_client(config)?,
         ))),
-        p => Err(Error::ProviderDisabled(p.to_string())),
+        #[cfg(not(feature = "aliyun"))]
+        Provider::Aliyun => Err(Error::ProviderDisabled("aliyun".to_string())),
+        #[cfg(not(feature = "zhipu"))]
+        Provider::Zhipu => Err(Error::ProviderDisabled("zhipu".to_string())),
+        Provider::OpenAI | Provider::Ollama => Err(Error::Unsupported {
+            provider: config.provider.to_string(),
+            capability: "rerank",
+        }),
+    }
+}
+
+#[cfg(test)]
+mod factory_tests {
+    use super::create;
+    use crate::config::{Provider, ProviderConfig};
+    use crate::error::Error;
+
+    #[cfg(feature = "openai")]
+    #[test]
+    fn openai_is_unsupported() {
+        let cfg = ProviderConfig::new(Provider::OpenAI, "k", "https://x/v1", "m");
+        match create(&cfg) {
+            Err(Error::Unsupported {
+                provider,
+                capability,
+            }) => {
+                assert_eq!(provider, "openai");
+                assert_eq!(capability, "rerank");
+            }
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected Unsupported, got {:?}", e),
+        }
+    }
+
+    #[cfg(feature = "ollama")]
+    #[test]
+    fn ollama_is_unsupported() {
+        let cfg = ProviderConfig::new(Provider::Ollama, "k", "http://localhost/v1", "m");
+        match create(&cfg) {
+            Err(Error::Unsupported {
+                provider,
+                capability,
+            }) => {
+                assert_eq!(provider, "ollama");
+                assert_eq!(capability, "rerank");
+            }
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected Unsupported, got {:?}", e),
+        }
+    }
+
+    #[cfg(not(feature = "aliyun"))]
+    #[test]
+    fn aliyun_disabled_without_aliyun_feature() {
+        let cfg = ProviderConfig::new(Provider::Aliyun, "k", "https://x/v1", "m");
+        match create(&cfg) {
+            Err(Error::ProviderDisabled(s)) => assert_eq!(s, "aliyun"),
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected ProviderDisabled, got {:?}", e),
+        }
+    }
+
+    #[cfg(not(feature = "zhipu"))]
+    #[test]
+    fn zhipu_disabled_without_zhipu_feature() {
+        let cfg = ProviderConfig::new(Provider::Zhipu, "k", "https://x/v1", "m");
+        match create(&cfg) {
+            Err(Error::ProviderDisabled(s)) => assert_eq!(s, "zhipu"),
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected ProviderDisabled, got {:?}", e),
+        }
     }
 }

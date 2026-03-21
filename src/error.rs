@@ -2,9 +2,9 @@
 //!
 //! # `ProviderDisabled` 与 `Unsupported`
 //!
-//! **`ProviderDisabled`**：当前编译配置下该厂商或模态未启用（Cargo feature 组合不满足），或例如启了 `embed` 但未启 `zhipu` 时仍选择智谱，工厂在 `match` 中落到禁用分支。
+//! **`ProviderDisabled`**：当前编译配置下该厂商或模态未启用（Cargo feature 组合不满足），例如启了 `embed` 但未启 `zhipu` 时仍选智谱，或启了 `rerank` 但未启 `aliyun` / `zhipu` 时仍选阿里云 / 智谱。
 //!
-//! **`Unsupported`**：对应模态的工厂已编译，但该厂商在该能力上**没有实现**（例如未支持文生图的厂商在 `create_image_provider` 中），或占位能力（如 `audio` 工厂尚未接任何远端）。
+//! **`Unsupported`**：对应模态的工厂已编译，但该厂商在该能力上**没有实现**（例如 `create_image_provider` 对未支持文生图的厂商，或 `create_rerank_provider` 对 **`OpenAI` / `Ollama`**），或占位能力（如 `audio` 工厂尚未接任何远端）。
 
 use thiserror::Error;
 
@@ -13,7 +13,7 @@ pub enum Error {
     #[error("unknown provider name: {0}")]
     UnknownProvider(String),
 
-    /// 厂商或模态未在 Cargo feature 中启用，或该组合在工厂 `match` 中不可用。
+    /// 厂商或模态未在 Cargo feature 中启用（例如启了 `rerank` 但未启 `aliyun` 仍选阿里云）。
     #[error("provider `{0}` is not enabled (Cargo feature or modality)")]
     ProviderDisabled(String),
 

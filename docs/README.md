@@ -10,3 +10,5 @@
 - [Rust 公共 API](rust-api.md)：`ProviderConfig`、错误类型、`create_*_provider`、各能力 trait
 - [HTTP 端点汇总](http-api.md)：方法、路径、`base_url` 约定、请求与响应字段摘要
 - [设计准则](design-guidelines.md)：编译边界、错误分类、配置与 HTTP 约定、文档与测试期望、非目标
+
+用户可见行为变更见仓库根目录 [CHANGELOG.md](../CHANGELOG.md)（与 `README.md` 能力矩阵对照阅读）。

@@ -16,7 +16,7 @@
 //!
 //! **向量（[`EmbedProvider`]）**：`POST {base_url}/embeddings`，非流式 JSON。创建前须在 [`ProviderConfig::dimension`] 中设置维数，否则工厂返回 [`Error::MissingConfig`]。约定与文本预处理见 [`embed`]。
 //!
-//! **重排序**：启用 `rerank` feature 时，仅 `Aliyun` 与 `Zhipu` 有实现；HTTP 路径分别为 `{base_url}/reranks` 与 `{base_url}/rerank`（阿里云为复数 `reranks`）。详见 `rerank` 模块文档（生成文档时需启用该 feature）。
+//! **重排序**：启用 `rerank` feature 时，仅 `Aliyun` 与 `Zhipu` 有实现；`OpenAI` / `Ollama` 会得到 [`Error::Unsupported`]（`capability` 为 `rerank`）。HTTP 路径分别为 `{base_url}/reranks` 与 `{base_url}/rerank`（阿里云为复数 `reranks`）。详见 `rerank` 模块文档（生成文档时需启用该 feature）。
 //!
 //! **文生图**：启用 `image` feature 时，OpenAI 为 `POST …/images/generations`，阿里云 DashScope 为 `POST …/services/aigc/multimodal-generation/generation`（`base_url` 为原生 API 根，非 `compatible-mode` 对话网关）。其它厂商得到 [`Error::Unsupported`]。详见 `image` 模块文档。
 //!
@@ -65,7 +65,7 @@ pub fn create_embed_provider(config: &ProviderConfig) -> Result<Box<dyn EmbedPro
     embed::create(config)
 }
 
-/// 创建 Rerank Provider（阿里云、智谱；HTTP 路径见 [`rerank`]）。
+/// 创建 Rerank Provider（阿里云、智谱；`OpenAI` / `Ollama` 返回 [`Error::Unsupported`]；HTTP 路径见 [`rerank`]）。
 #[cfg(feature = "rerank")]
 pub fn create_rerank_provider(config: &ProviderConfig) -> Result<Box<dyn RerankProvider>> {
     rerank::create(config)
