@@ -83,3 +83,73 @@ impl RerankProvider for ZhipuRerank {
             .collect())
     }
 }
+
+#[cfg(all(test, feature = "zhipu"))]
+mod tests {
+    use super::*;
+    use crate::config::{Provider, ProviderConfig};
+    use crate::error::Error;
+    use std::time::Duration;
+    use wiremock::matchers::{body_json, header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn http_client() -> HttpClient {
+        HttpClient::new(Duration::from_secs(60)).unwrap()
+    }
+
+    fn test_config(server: &MockServer) -> ProviderConfig {
+        ProviderConfig::new(
+            Provider::Zhipu,
+            "zk",
+            server.uri().to_string(),
+            "rerank-model",
+        )
+    }
+
+    #[tokio::test]
+    async fn rerank_success_uses_rerank_path() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/rerank"))
+            .and(header("Authorization", "Bearer zk"))
+            .and(body_json(serde_json::json!({
+                "model": "rerank-model",
+                "query": "q",
+                "documents": ["a", "b"],
+                "top_n": null,
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "results": [{ "index": 0, "relevance_score": 0.88 }]
+            })))
+            .mount(&server)
+            .await;
+
+        let cfg = test_config(&server);
+        let r = ZhipuRerank::new(&cfg, http_client());
+        let items = r.rerank("q", &["a", "b"], None).await.unwrap();
+        assert_eq!(items.len(), 1);
+        assert_eq!(items[0].index, 0);
+        assert!((items[0].score - 0.88).abs() < 1e-9);
+    }
+
+    #[tokio::test]
+    async fn rerank_non_success_maps_to_api() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/rerank"))
+            .respond_with(ResponseTemplate::new(403).set_body_string("forbidden"))
+            .mount(&server)
+            .await;
+
+        let cfg = test_config(&server);
+        let r = ZhipuRerank::new(&cfg, http_client());
+        let err = r.rerank("q", &["a"], None).await.unwrap_err();
+        match err {
+            Error::Api { status, message } => {
+                assert_eq!(status, 403);
+                assert_eq!(message, "forbidden");
+            }
+            other => panic!("expected Api, got {:?}", other),
+        }
+    }
+}

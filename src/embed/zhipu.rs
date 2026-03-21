@@ -88,3 +88,73 @@ impl EmbedProvider for ZhipuEmbed {
         self.dimension
     }
 }
+
+#[cfg(all(test, feature = "zhipu"))]
+mod tests {
+    use super::*;
+    use crate::config::{Provider, ProviderConfig};
+    use crate::error::Error;
+    use std::time::Duration;
+    use wiremock::matchers::{body_json, header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    fn http_client() -> HttpClient {
+        HttpClient::new(Duration::from_secs(30)).unwrap()
+    }
+
+    fn test_config(server: &MockServer) -> ProviderConfig {
+        let mut cfg = ProviderConfig::new(
+            Provider::Zhipu,
+            "zk",
+            server.uri().to_string(),
+            "embedding-3",
+        );
+        cfg.dimension = Some(2);
+        cfg
+    }
+
+    #[tokio::test]
+    async fn zhipu_request_has_no_dimensions_field() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/embeddings"))
+            .and(header("Authorization", "Bearer zk"))
+            .and(body_json(serde_json::json!({
+                "model": "embedding-3",
+                "input": ["hello"],
+            })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+                "data": [{ "embedding": [0.5, -0.5] }]
+            })))
+            .mount(&server)
+            .await;
+
+        let cfg = test_config(&server);
+        let dim = cfg.dimension.unwrap();
+        let emb = ZhipuEmbed::new(&cfg, dim, http_client());
+        let v = emb.encode("hello").await.unwrap();
+        assert_eq!(v, vec![0.5f32, -0.5]);
+    }
+
+    #[tokio::test]
+    async fn zhipu_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/embeddings"))
+            .respond_with(ResponseTemplate::new(400).set_body_string("bad"))
+            .mount(&server)
+            .await;
+
+        let cfg = test_config(&server);
+        let dim = cfg.dimension.unwrap();
+        let emb = ZhipuEmbed::new(&cfg, dim, http_client());
+        let err = emb.encode("x").await.unwrap_err();
+        match err {
+            Error::Api { status, message } => {
+                assert_eq!(status, 400);
+                assert_eq!(message, "bad");
+            }
+            other => panic!("expected Api, got {:?}", other),
+        }
+    }
+}

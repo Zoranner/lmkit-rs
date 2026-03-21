@@ -52,3 +52,127 @@ impl HttpClient {
         serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde::{Deserialize, Serialize};
+    use wiremock::matchers::{body_json, header, method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    #[derive(Serialize)]
+    struct EchoReq {
+        n: i32,
+    }
+
+    #[derive(Debug, Deserialize, PartialEq, Eq)]
+    struct EchoResp {
+        msg: String,
+    }
+
+    #[tokio::test]
+    async fn post_bearer_json_success() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/echo"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "hi" })))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/echo", server.uri());
+        let out: EchoResp = client
+            .post_bearer_json(&url, "tok", &EchoReq { n: 1 }, |s| s)
+            .await
+            .unwrap();
+        assert_eq!(out.msg, "hi");
+    }
+
+    #[tokio::test]
+    async fn post_bearer_json_api_error_invokes_map_err_body() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/echo"))
+            .respond_with(ResponseTemplate::new(422).set_body_string("upstream"))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/echo", server.uri());
+        let err = client
+            .post_bearer_json::<EchoReq, EchoResp, _>(
+                &url,
+                "k",
+                &EchoReq { n: 0 },
+                |s| format!("wrapped:{s}"),
+            )
+            .await
+            .unwrap_err();
+
+        match err {
+            Error::Api { status, message } => {
+                assert_eq!(status, 422);
+                assert_eq!(message, "wrapped:upstream");
+            }
+            e => panic!("unexpected {e:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn post_bearer_json_non_json_success_body_returns_parse() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/echo"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("not-json"))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/echo", server.uri());
+        let err = client
+            .post_bearer_json::<EchoReq, EchoResp, _>(&url, "k", &EchoReq { n: 1 }, |s| s)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, Error::Parse(_)));
+    }
+
+    #[tokio::test]
+    async fn post_bearer_json_wrong_shape_returns_parse() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/echo"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "wrong": true })))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/echo", server.uri());
+        let err = client
+            .post_bearer_json::<EchoReq, EchoResp, _>(&url, "k", &EchoReq { n: 1 }, |s| s)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(err, Error::Parse(_)));
+    }
+
+    #[tokio::test]
+    async fn post_bearer_json_sends_bearer_and_json_content_type() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/token-check"))
+            .and(header("Authorization", "Bearer secret-key"))
+            .and(header("content-type", "application/json"))
+            .and(body_json(serde_json::json!({ "n": 42 })))
+            .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "ok" })))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/token-check", server.uri());
+        client
+            .post_bearer_json::<EchoReq, EchoResp, _>(&url, "secret-key", &EchoReq { n: 42 }, |s| s)
+            .await
+            .unwrap();
+    }
+}
