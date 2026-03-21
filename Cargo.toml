@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 authors = ["Zoranner"]
 description = "Multi-provider AI API client (chat, embed, rerank, image, audio)"
-license = "GPL-3.0-only"
+license = "MIT"
 
 [features]
 # 厂商
