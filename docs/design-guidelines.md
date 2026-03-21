@@ -12,7 +12,7 @@
 
 ## 配置与 HTTP 约定
 
-对外配置集中在 `ProviderConfig`：厂商枚举、`api_key`、`base_url`、模型名、嵌入维数（嵌入必填）、可选超时。路径拼接统一对 `base_url` 做尾部斜杠规范化后再接具体 segment，避免双斜杠或遗漏；各模态文档中须写明真实 URL 形态（包括阿里云 rerank 使用 `reranks` 等与「直觉不一致」的细节）。鉴权默认采用 `Authorization: Bearer`；**Anthropic Messages 兼容**等例外使用 `x-api-key` 与版本头（见 `HttpClient::post_json_with_headers`）；**Google Gemini generateContent** 使用 query 参数 `key`（见 `HttpClient::post_json_query`）。各模态 rustdoc 与 HTTP 文档应写明具体形态。同一实现可按兼容契约对接官方或第三方网关。是否接受空密钥由上游网关决定，本库不假装替用户做本地校验，但应在 rustdoc 中写明这一行为，以免本地网关与云厂商表现不同造成困惑。
+对外配置集中在 `ProviderConfig`：厂商枚举、`api_key`、`base_url`、模型名、嵌入维数（嵌入必填）、可选超时。路径拼接统一对 `base_url` 做尾部斜杠规范化后再接具体 segment，避免双斜杠或遗漏；各模态文档中须写明真实 URL 形态（包括阿里云 rerank 使用 `reranks` 等与「直觉不一致」的细节）。鉴权默认采用 `Authorization: Bearer`；**Anthropic Messages 兼容**等例外使用 `x-api-key` 与版本头（见 `HttpClient::post_json_with_headers`）；**Google Gemini** 的 **generateContent**、**embedContent** / **batchEmbedContents** 使用 query 参数 `key`（见 `HttpClient::post_json_query`）。各模态 rustdoc 与 HTTP 文档应写明具体形态。同一实现可按兼容契约对接官方或第三方网关。是否接受空密钥由上游网关决定，本库不假装替用户做本地校验，但应在 rustdoc 中写明这一行为，以免本地网关与云厂商表现不同造成困惑。
 
 `model` 字段视为**透传**：不在库内维护各厂商可用模型清单，也不做「该厂商是否支持此模型」的预检。名称是否合法、是否有权限、是否在所选地域开通，一律以远端响应为准；典型失败形态为 HTTP 非 2xx，映射为 `Error::Api`（响应体经各实现整理后写入 `message`）。若将来引入可选预检或模型表，须在准则中单独立项，并明确与现有「薄封装」边界的关系，避免维护者误以为必须在库内同步全量模型目录。
 

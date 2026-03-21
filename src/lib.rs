@@ -13,7 +13,7 @@
 //!
 //! **对话（[`ChatProvider`]）**：`OpenAI` / `Aliyun` / `Ollama` / `Zhipu` 为 OpenAI 兼容 `POST {base_url}/chat/completions`，非流式；每次调用只发送一条 `user` 消息，`temperature` 固定为 `0.2`。**`Anthropic`**（`anthropic` + `chat`）为 **Anthropic Messages 兼容**，`POST {base_url}/messages`，请求头 `x-api-key` 与 `anthropic-version`；适用于官方端点及兼容同一契约的网关（含常见 Coding Plan 通道，见 [`chat`]）。**`Google`**（`google` + `chat`）为 **Gemini generateContent**，`POST {base_url}/models/{model}:generateContent`，API Key 为 query 参数 `key`；请求体与官方单轮 REST 示例一致（见 [`chat`]）。
 //!
-//! **向量（[`EmbedProvider`]）**：`POST {base_url}/embeddings`，非流式 JSON。创建前须在 [`ProviderConfig::dimension`] 中设置维数，否则工厂返回 [`Error::MissingConfig`]。约定与文本预处理见 [`embed`]。
+//! **向量（[`EmbedProvider`]）**：`OpenAI` / `Aliyun` / `Ollama` / `Zhipu` 为 `POST {base_url}/embeddings`（非流式 JSON）。**`Google`**（`google` + `embed`）为 Gemini **`embedContent` / `batchEmbedContents`**（query `key`），见 [`embed`]。创建前须在 [`ProviderConfig::dimension`] 中设置维数，否则工厂返回 [`Error::MissingConfig`]。约定与文本预处理见 [`embed`]。
 //!
 //! **重排序**：启用 `rerank` feature 时，仅 `Aliyun` 与 `Zhipu` 有实现；`OpenAI` / `Ollama` / `Anthropic` / `Google` 会得到 [`Error::Unsupported`]（`capability` 为 `rerank`）。HTTP 路径分别为 `{base_url}/reranks` 与 `{base_url}/rerank`（阿里云为复数 `reranks`）。详见 `rerank` 模块文档（生成文档时需启用该 feature）。
 //!

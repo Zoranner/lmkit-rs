@@ -26,7 +26,7 @@
 
 `create_chat_provider(&ProviderConfig) -> Result<Box<dyn ChatProvider>>`（feature `chat`）。
 
-`create_embed_provider(&ProviderConfig) -> Result<Box<dyn EmbedProvider>>`（feature `embed`）。`Anthropic`、`Google` 返回 `Unsupported`（`capability: "embed"`）；未启用对应厂商 feature 时选该厂商为 `ProviderDisabled`。
+`create_embed_provider(&ProviderConfig) -> Result<Box<dyn EmbedProvider>>`（feature `embed`）。`Anthropic` 返回 `Unsupported`（`capability: "embed"`）；未启用对应厂商 feature 时选该厂商为 `ProviderDisabled`。`Google` 在启用 `google` 时为 Gemini 嵌入实现；未启用 `google` feature 时为 `ProviderDisabled`。
 
 `create_rerank_provider(&ProviderConfig) -> Result<Box<dyn RerankProvider>>`（feature `rerank`）。仅阿里云与智谱有实现；`OpenAI` / `Ollama` / `Anthropic` / `Google` 返回 `Unsupported`；选了阿里云或智谱但未启用对应厂商 feature 时返回 `ProviderDisabled`。
 

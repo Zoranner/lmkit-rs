@@ -3,7 +3,7 @@ name = "model-provider"
 version = "0.2.0"
 edition = "2021"
 authors = ["Zoranner"]
-description = "Multi-provider AI API client (OpenAI, Anthropic, Google Gemini, Aliyun, Ollama, Zhipu; chat, embed, rerank, image, audio stubs)"
+description = "Multi-provider AI API client (OpenAI, Anthropic, Google Gemini, Aliyun, Ollama, Zhipu; chat, embed incl. Gemini, rerank, image, audio stubs)"
 license = "MIT"
 
 [features]

@@ -2,13 +2,15 @@
 //!
 //! # HTTP 与厂商分支
 //!
-//! 请求地址为 `POST {base_url}/embeddings`，`base_url` 会先 `trim_end_matches('/')` 再拼接路径。
+//! 多数厂商请求地址为 `POST {base_url}/embeddings`，`base_url` 会先 `trim_end_matches('/')` 再拼接路径。**Google Gemini** 见下文专用路径。
 //!
 //! **`OpenAI` / `Aliyun` / `Ollama`**（启用对应厂商 feature 与 `embed`）：OpenAI 兼容请求体，含 `model`、`input`（字符串数组）、**`dimensions`**（等于配置中的 [`ProviderConfig::dimension`]，序列化进 JSON）。成功时解析 `data[].embedding`。
 //!
 //! **`Zhipu`**：路径仍为 `…/embeddings`，请求体仅 `model` 与 `input`，**不发送 `dimensions` 字段**；配置中的 `dimension` 仍必填，用于 [`EmbedProvider::dimension`] 返回值，且须与模型实际输出维数一致。未启用 `zhipu` feature 时选择智谱会得到 [`Error::ProviderDisabled`]。
 //!
-//! **`Anthropic`**、**`Google`**：工厂返回 [`Error::Unsupported`]（`capability` 为 `"embed"`）；未启用对应厂商 feature 时选该厂商为 [`Error::ProviderDisabled`]。
+//! **`Google`**（`google` + `embed`）：**Gemini** `embedContent` / `batchEmbedContents`，query 参数 **`key`**；请求体字段与官方 REST 一致，见源码 `google_gemini.rs`。未启用 `google` feature 时选 Google 为 [`Error::ProviderDisabled`]。
+//!
+//! **`Anthropic`**：工厂返回 [`Error::Unsupported`]（`capability` 为 `"embed"`）；未启用 `anthropic` feature 时选该厂商为 [`Error::ProviderDisabled`]。
 //!
 //! # 文本预处理
 //!
@@ -16,8 +18,10 @@
 //!
 //! # 鉴权
 //!
-//! 已实现嵌入的厂商使用 `Authorization: Bearer {api_key}` 的 JSON POST。`Anthropic`、`Google` 等无嵌入实现，工厂阶段即返回错误，不发起 HTTP。
+//! 已实现嵌入的厂商：`OpenAI` / `Aliyun` / `Ollama` / `Zhipu` 使用 `Authorization: Bearer {api_key}`；**`Google`** 使用 query `key`（见上）。**`Anthropic`** 无嵌入实现，工厂阶段即返回错误，不发起 HTTP。
 
+#[cfg(feature = "google")]
+mod google_gemini;
 mod openai_compat;
 #[cfg(feature = "zhipu")]
 mod zhipu;
@@ -95,10 +99,11 @@ pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn EmbedProvider>> 
         Provider::Anthropic => Err(Error::ProviderDisabled("anthropic".to_string())),
 
         #[cfg(feature = "google")]
-        Provider::Google => Err(Error::Unsupported {
-            provider: config.provider.to_string(),
-            capability: "embed",
-        }),
+        Provider::Google => Ok(Box::new(google_gemini::GoogleGeminiEmbed::new(
+            config,
+            dimension,
+            http_client(config)?,
+        ))),
         #[cfg(not(feature = "google"))]
         Provider::Google => Err(Error::ProviderDisabled("google".to_string())),
     }

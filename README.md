@@ -52,7 +52,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 |:---:|:---:|:---:|:---:|:---:|
 | OpenAI | ✅ | ✅ | ❌ | ✅ |
 | Anthropic | ✅ 🔧 | ❌ | ❌ | ❌ |
-| Google (Gemini) | ✅ 🔧 | ❌ | ❌ | ❌ |
+| Google (Gemini) | ✅ 🔧 | ✅ 🔧 | ❌ | ❌ |
 | 阿里云 | ✅ | ✅ | ✅ | ✅ 🔧 |
 | Ollama | ✅ | ✅ | ❌ | ❌ |
 | 智谱 | ✅ | ✅ 🔧 | ✅ | ❌ |

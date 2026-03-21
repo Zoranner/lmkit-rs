@@ -1,113 +1,110 @@
 # 后续工作与维护备忘
 
-本文件跟踪实现缺口、工程化、厂商扩展与发版检查。设计约定以 [设计准则](docs/design-guidelines.md) 为准；能力矩阵与接入说明见根目录 [README](README.md)。README 中已标明未支持或需专用契约的能力，若要落地须先评估 HTTP 形态、Cargo feature 组合与错误语义，再落到实现与文档。
+设计约定以 [设计准则](docs/design-guidelines.md) 为准；能力矩阵与接入说明见根目录 [README](README.md) 与 [docs](docs/README.md)。README 中已标明未支持或需专用契约的能力；落地前须评估 HTTP 形态、Cargo feature 组合与错误语义，再同步实现与文档。
 
-## 当前实现与明确缺口
+## 当前实现快照
 
-在对应 feature 组合下，**对话**已覆盖 OpenAI 兼容路径与 **Anthropic Messages 兼容**（`POST …/messages`，`x-api-key` + `anthropic-version`，实现见 `chat/anthropic_compat.rs`，含 wiremock 用例）；**向量、重排序、文生图**仍按既有厂商矩阵对接 HTTP。共享层提供 `HttpClient::post_bearer_json`、`post_json_with_headers`（Anthropic 等）与 `post_json_query`（Gemini `key` query 等）。`docs/` 下接口索引、HTTP 汇总、Rust API 摘要与设计准则已齐；crate 与各子模块 rustdoc 说明了 feature 边界与 `ProviderDisabled` / `Unsupported` 的划分（`chat` / `embed` / `image` 工厂用互斥 `cfg` 保证 `match` 穷尽，与 `rerank` 一致）。
+| 维度 | 状态 |
+|:--|:--|
+| **Chat** | OpenAI 兼容路径（`OpenAI` / `Aliyun` / `Ollama` / `Zhipu`）：`POST …/chat/completions`，Bearer。**Anthropic**：Messages 兼容（`chat/anthropic_compat.rs`，`x-api-key` + `anthropic-version`）。**Google**：Gemini generateContent（`chat/google_gemini.rs`，query `key`）。均为单轮、非流式 JSON。 |
+| **Embed** | OpenAI 兼容体：`OpenAI` / `Aliyun` / `Ollama`；智谱专用体：`Zhipu`。**Google**：Gemini `embedContent` / `batchEmbedContents`（`embed/google_gemini.rs`，query `key`）。**Anthropic**：工厂 `Unsupported`（`capability: "embed"`）。 |
+| **Rerank** | 仅 `Aliyun`、`Zhipu`；`OpenAI` / `Ollama` / `Anthropic` / `Google` 为 `Unsupported`（非 `ProviderDisabled`）。 |
+| **Image** | `OpenAI`、`Aliyun`；未启用对应厂商 feature 时 `OpenAI`/`Aliyun` 为 `ProviderDisabled`；`Ollama` / `Zhipu` / `Anthropic` / `Google` 为 `Unsupported`。 |
+| **Audio** | 仅 trait 与工厂占位，`create_*` 始终 `Unsupported`。 |
+| **共享 HTTP** | `HttpClient::post_bearer_json`、`post_json_with_headers`、`post_json_query`（见 `client.rs`）。 |
+| **工厂穷尽** | `chat` / `embed` / `image` 等与 `rerank` 一致，用互斥 `cfg` 保证 `match` 穷尽，无 `unreachable_patterns` 压制。 |
+| **测试** | 主要 HTTP 路径含 wiremock：`openai_compat`、`anthropic_compat`、**`google_gemini`**、`client`（query）、embed / rerank / image 各厂商文件。 |
 
-**Anthropic** 当前仅 **chat** 有实现；`embed` / `rerank` / `image` 在启用对应模态与厂商 feature 时为 `Unsupported`。**音频（`audio`）**仅有 trait 与工厂占位，创建函数始终返回 `Unsupported`，不发起请求。**Google（Gemini / AI Studio）** 已接 **chat**（generateContent）；`embed` / `rerank` / `image` 仍为 `Unsupported`。下列厂商扩展表中的多数其它条目仍未接入。
+**CI 与发版**：推送 **`v*`** 标签时 [.github/workflows/cargo-publish.yml](.github/workflows/cargo-publish.yml) 跑 `fmt`、`clippy --all-features -D warnings`、`test --all-features`，通过后 `cargo publish`（Secrets：`CARGO_ACCESS_TOKEN`）。**普通 push / PR 不跑上述检查**。
 
-**CI 与发版**：推送 **`v*`** 标签时由 [.github/workflows/cargo-publish.yml](.github/workflows/cargo-publish.yml) 执行 `cargo fmt --check`、`cargo clippy --all-targets --all-features -D warnings`、`cargo test --all-features`，通过后 `cargo publish`（仓库 Secrets 需配置 `CARGO_ACCESS_TOKEN`）。工作流使用 `dtolnay/rust-toolchain@stable`，`permissions: contents: read`。本库未提交 `Cargo.lock`，缓存 key 使用 `Cargo.toml` 的 hash。**普通 push / PR 仍不跑上述检查**，日常依赖本地或将来另加 workflow。
+## 近期可执行项（建议顺序）
 
-## 发版前清单（下一版打标签前逐项核对）
+1. **发版**：将 [CHANGELOG](CHANGELOG.md) **Unreleased** 中已对用户可见的条目归档到具体版本号；`Cargo.toml` 的 `version` 与标签一致。注意 Unreleased 中含 **Rerank/Image 错误语义调整**，对依赖 `Error` 变体做分支的调用方可能属破坏性变更，semver 取 **0.3.0** 或 **0.2.1** 前须自行判断并写在 CHANGELOG 中。
+2. **crate 元数据**：声明 **`rust-version`（MSRV）**；补齐 **`repository`**（按需 **`documentation`** / **`homepage`**）、**`readme`**、**`keywords`** / **`categories`**（与 [包元数据](#包元数据与-cratesio-呈现) 一节一致）。
+3. **可选 CI**：在 **pull_request** 或默认分支 **push** 上跑与发版相同的 fmt / clippy / test（全 feature 或与 PR 匹配的子集）。
+4. **示例**：新增 **`examples/`**（如 `openai`+`chat`，`anthropic`+`chat`，`google`+`chat`，或 `full` 下各模态一条），便于复制与联调。
+5. **P0 补全（按需排期）**：**Anthropic** 的 **embed**（及 **Google** / **Anthropic** 的 **image** 等）若产品需要，按官方 REST 拆独立实现路径、补 wiremock、更新 README 与 [docs/http-api.md](docs/http-api.md)。**Google embed** 已接（`embed/google_gemini.rs`）。
 
-将 [CHANGELOG](CHANGELOG.md) 里 **Unreleased** 中已对用户可见的条目归档到具体版本号下，并继续在 Unreleased 累积新变更。当前 crate 版本为 **0.2.0**，CHANGELOG 中 **Unreleased** 已积累 Anthropic、Rerank/Image 工厂行为与 CI 等条目；若下一标签为 **0.2.1**（或 0.3.0），发版时须写入对应版本区块，避免与 crates.io 上已发版本对比时断层。
+## 发版前清单
 
-`Cargo.toml` 的 **`version`** 必须与即将推送的标签一致（例如 `v0.2.1` 对应 `0.2.1`）。
-
-发版前执行 `cargo doc --all-features --no-deps`，核对公开 trait、工厂与类型在各 feature 下的可见性，并与 [docs/interfaces.md](docs/interfaces.md)、README 矩阵对照。可选再执行 `cargo package` 检查打包内容是否含预期文件。
+- CHANGELOG：Unreleased 归档；新用户可见行为继续记在 Unreleased。
+- `cargo doc --all-features --no-deps`，对照 [docs/interfaces.md](docs/interfaces.md) 与 README 矩阵。
+- 可选：`cargo package` 检查打包内容。
+- **Anthropic**：同步 **`ANTHROPIC_VERSION`**（`chat/anthropic_compat.rs`）与上游 Messages API 要求及 wiremock 断言。
 
 ## 包元数据与 crates.io 呈现
 
-`[package]` 已有 `description`，仍建议在正式发布或下一次 semver 小版本时继续补齐，便于依赖方与 docs.rs。
-
-声明 **`rust-version`（MSRV）**，并在 README 或 [docs/rust-api.md](docs/rust-api.md) 中写明，与 docs.rs 构建预期一致。
-
-补齐 **`repository`**（及按需 **`documentation`** / **`homepage`**），并视情况增加 **`readme`**（指向根 README，改善 crates.io 展示）、**`keywords`** / **`categories`**，减少「空主页」观感。
+`[package]` 已有 `description`，仍可在下一 semver 小版本继续打磨。须补充：**`rust-version`**、**`repository`**、按需 **`readme` / `documentation` / `homepage` / `keywords` / `categories`**。本库未提交 `Cargo.lock`；工作流缓存 key 使用 `Cargo.toml` hash。
 
 ## 文档与示例
 
-变更厂商 HTTP 契约、工厂分支或 `Error` 变体时，同步 README 矩阵、[docs/http-api.md](docs/http-api.md)、[docs/rust-api.md](docs/rust-api.md) 与设计准则中相关表述；用户可见行为变化必须进 CHANGELOG。
+变更厂商 HTTP 契约、工厂分支或 `Error` 变体时，同步 README 矩阵、[docs/http-api.md](docs/http-api.md)、[docs/rust-api.md](docs/rust-api.md)、设计准则；用户可见行为必须进 CHANGELOG。
 
-仓库尚无 **`examples/`** 目录。可增加最小可运行示例（例如仅 `openai`+`chat`，或 `anthropic`+`chat`，或 `full` 下各模态一条），与单测互补，方便接入方复制与人工联调。
-
-Anthropic 兼容层使用常量 **`ANTHROPIC_VERSION`**（见 `chat/anthropic_compat.rs`）；若上游文档调整 Messages API 所要求的版本头，发版前须同步该常量与相关 wiremock 断言。
+仓库尚无 **`examples/`**（见上文近期项）。
 
 ## 工程与 CI（可选加深）
 
-若希望合并前自动发现问题，可新增仅在 **pull_request** 或 **push 到默认分支** 上跑与发版相同的 `fmt` / `clippy` / `test --all-features`（或与 PR 体量匹配的子集），与现有「仅标签触发 publish」并存。
-
-工作流里 `actions/cache` 目前为 **v3**；非紧急，可在维护窗口评估升级到 **v4** 等当前推荐版本。
+- 合并前自动检查：见「近期可执行项」中的 PR CI。
+- `actions/cache` 当前为 **v3**；维护窗口可评估 **v4**。
 
 ## 测试与可观测性
 
-现有测试已覆盖各模态主要路径；Anthropic 对话在 `anthropic_compat.rs` 内带 wiremock。后续若新增专用请求体或路径，应为该分支补充固定响应用例，避免只在默认 feature 下「碰巧通过」。
+新增专用请求体或路径时，为该分支补 wiremock（成功体、业务错误、非 JSON 等），避免仅默认 feature 下通过。
 
-源码中仅在少数路径使用 `tracing`（如部分 rerank / embed 日志）。若希望调用方可观测，可在设计准则或 rustdoc 中简短说明「可选接入 tracing subscriber」，避免依赖方误以为默认有结构化日志输出。
+源码中 `tracing` 使用面仍较窄；若强调可观测性，可在设计准则或 rustdoc 中说明调用方需自行挂 subscriber。
 
 ## 厂商扩展规划
 
-用户会自然拿上层产品里「其他 API Key」那张矩阵当心理预期；本 crate 长期只覆盖其中少数几家时，Rust 侧容易反复自己补封装。厂商扩展应与稳定性、文档和发版元数据一起作为近期主线，在路线图或 issue 里按下面**优先级**与全表分批关单。每新增一家：`Cargo.toml` 厂商 feature、扩展 [`Provider`](src/config.rs) 与 `FromStr`、各模态工厂分支与 wiremock；并同步 README、[docs/http-api.md](docs/http-api.md)、[docs/interfaces.md](docs/interfaces.md) 与 rustdoc。不必一次打通全模态，优先 **chat** 与刚需 **embed**，再 rerank、image。
+与稳定性、文档、发版元数据一并排期。每新增一家：`Cargo.toml` feature、[`Provider`](src/config.rs) 与 `FromStr`、各模态工厂、wiremock、README、[docs/http-api.md](docs/http-api.md)、[docs/interfaces.md](docs/interfaces.md)、rustdoc。不必一次打通全模态；优先 **chat** 与刚需 **embed**，再 rerank、image。
 
-**接入优先级**（按调用热度与产品策略，实施前仍以各平台最新文档为准）：
+**接入优先级**（实施前以各平台最新文档为准）：
 
 | 档位 | 对象 | 本库快照 | 说明 |
 |:--|:--|:--|:--|
-| P0 | **Anthropic、Google（Gemini / AI Studio）、OpenAI** 官方 API | OpenAI 全矩阵已接入；**Anthropic 已接 chat（Messages 兼容）**，其余模态未接；**Google 已接 chat（generateContent）**，其余模态未接 | P0 三家对话均已覆盖；Google / Anthropic 的 embed 等模态按需评估 |
-| P1 国内 | **智谱 GLM、MiniMax、Kimi、阿里云** | 智谱、阿里云已接入；MiniMax、Kimi 未接入 | 与国内付费与「其他 API Key」矩阵对齐 |
-| P2 通用聚合 | **New API、OpenRouter** 等转发 / 聚合网关 | 未接入 | 常见 OpenAI 或 Anthropic 兼容形态，可独立 feature 或强化「自定义 `base_url` + 兼容协议」文档与示例 |
-| P3 | 其余厂商、海外 Bedrock / Azure / xAI 等及第二梯队托管 | 大多未接入 | 与矩阵 parity 或客户需求再排 |
+| P0 | **Anthropic、Google（Gemini）、OpenAI** | OpenAI 全矩阵；Anthropic / Google **chat** 已接；**Google embed** 已接；**Anthropic embed**、**rerank**、**image** 未接或 Unsupported | 三家对话已覆盖；Google / Anthropic 其它模态按需 |
+| P1 国内 | **智谱、MiniMax、Kimi、阿里云** | 智谱、阿里云已接；MiniMax、Kimi 未接 | 与「其他 API Key」矩阵对齐 |
+| P2 聚合 | **New API、OpenRouter** 等 | 未接入 | 多为 OpenAI/Anthropic 兼容；可 feature 或强化「自定义 `base_url`」文档 |
+| P3 | Bedrock、Azure、xAI、Groq 等 | 大多未接入 | 按 parity 或客户需求 |
 
-下表与常见产品矩阵对齐（与 P0–P3 交叉参考）；「建议路径」以各平台现行 HTTP 文档为准。
+与产品矩阵对齐的厂商表（与 P0–P3 交叉参考）：
 
-| 厂商（对齐「其他 API Key」） | 本库状态 | 建议路径 |
+| 厂商 | 本库状态 | 建议路径 |
 |:--|:--:|:--|
-| OpenAI | 已接入 | P0；作兼容层基准 |
-| Anthropic | 已接入（**chat**：Messages 兼容）；embed / rerank / image 为 `Unsupported` | P0；官方与兼容网关 / Coding Plan（同契约）共用 `base_url`；其它模态待评估 |
-| Google（Gemini / AI Studio） | 已接入（**chat**：generateContent）；embed / rerank / image 为 `Unsupported` | P0；其它模态待评估 |
-| 阿里云百炼 | 已接入 | P1；已有专用路径（如 rerank、文生图） |
-| 智谱 GLM | 已接入 | P1；部分模态为专用契约 |
-| MiniMax | 未接入 | P1；以官方文档为准 |
-| 月之暗面 Kimi | 未接入 | P1；多为 OpenAI 兼容 |
-| New API | 未接入 | P2；聚合网关，协议以部署配置为准 |
-| OpenRouter | 未接入 | P2；多为 OpenAI 兼容 |
-| Ollama | 已接入 | 本地 OpenAI 兼容形态 |
-| DeepSeek | 未接入 | 多为 OpenAI 兼容，独立 feature 或文档化「OpenAI + 自定义 base_url」 |
+| OpenAI | 已接入 | P0；兼容基准 |
+| Anthropic | chat 已接；embed / rerank / image Unsupported | P0 |
+| Google（Gemini） | chat、embed 已接；rerank / image Unsupported | P0 |
+| 阿里云百炼 | 已接入 | P1 |
+| 智谱 GLM | 已接入 | P1 |
+| MiniMax | 未接入 | P1 |
+| 月之暗面 Kimi | 未接入 | P1 |
+| New API | 未接入 | P2 |
+| OpenRouter | 未接入 | P2 |
+| Ollama | 已接入 | 本地 OpenAI 兼容 |
+| DeepSeek | 未接入 | 多为 OpenAI 兼容 + 自定义 `base_url` |
 | 火山引擎（豆包） | 未接入 | 以官方文档为准 |
 | 硅基流动 | 未接入 | 多为 OpenAI 兼容 |
-| 腾讯混元 | 未接入 | 以官方文档为准 |
-| 百川智能 | 未接入 | 以官方文档为准 |
-| 零一万物 | 未接入 | 以官方文档为准 |
-| 阶跃星辰 | 未接入 | 以官方文档为准 |
-| 小米 MiMo | 未接入 | 以官方文档为准 |
-| z.ai | 未接入 | 以官方文档为准 |
-| Azure OpenAI | 未接入 | 常与 OpenAI 同形；可评估仅文档化「OpenAI + 自定义 `base_url`」 |
-| Amazon Bedrock | 未接入 | 签名与调用形态，专用实现 |
-| xAI（Grok） | 未接入 | 以官方文档为准 |
-| 自定义 API | 未单独枚举 | 若仅 OpenAI 兼容：文档说明选用 OpenAI + 自定义 `base_url` |
-| 其他本地推理 | 视需求 | 除 Ollama 外单独立项 |
+| 腾讯混元 / 百川 / 零一万物 / 阶跃 / 小米 MiMo / z.ai 等 | 未接入 | 以官方为准 |
+| Azure OpenAI | 未接入 | 常可 OpenAI + 自定义 `base_url` |
+| Amazon Bedrock | 未接入 | 签名与形态专用 |
+| xAI（Grok） | 未接入 | 以官方为准 |
+| 自定义 API | — | OpenAI 兼容则文档化 OpenAI + `base_url` |
 
-**Coding Plan** 与上表「API Key」在**鉴权上通常是同一类**（密钥 / Bearer 家族），并不是必然另一套 OAuth；差异主要在 **endpoint、模型 SKU、套餐配额**（例如不限量或大额包月权益）。不少套餐侧暴露的 HTTP 会**对齐 Anthropic Messages 一类形态**，以便 **Claude Code** 与相关 IDE 插件直接复用解析路径——实现上应区分「直连开放平台」与「套餐给出的 `base_url`」、以及字段是否与 Claude Code 适配，而不是先假定鉴权模型完全不同。
+**Coding Plan / 套餐通道**（鉴权多与 API Key 同类，差异在 endpoint / SKU / 配额；不少 HTTP 对齐 Anthropic Messages 以便 Claude Code）：
 
-| 套餐 / 通道（与产品 Coding Plan 入口对齐，示例） | 本库状态 | 规划要点 |
+| 通道（示例） | 本库状态 | 规划要点 |
 |:--|:--:|:--|
-| 智谱 GLM Coding Plan | 未接入 | 鉴权与智谱 Key 同类；端点 / SKU 可能与百炼直连不同，接口或贴近 Anthropic 以便 Claude Code |
-| MiniMax Coding Plan | 未接入 | 同上：套餐 URL 与开放平台分流，协议以厂商说明为准 |
-| Kimi Code Plan | 未接入 | 同上 |
-| 阿里云百炼 Coding Plan | 未接入 | 与同账号 API Key 产品线关系以官方为准 |
-| Claude Pro / Max | 部分覆盖 | 与 Anthropic API 同属 Messages 形态时，可尝试 **`anthropic` + `chat` + 套餐提供 base_url**；endpoint 与配额随套餐变化，文档与边界需持续对齐 |
-| Codex · ChatGPT Plus | 未接入 | 与 Platform API Key 并行；端点多 OpenAI 兼容，以官方为准 |
-| GitHub Copilot | 未接入 | 以 GitHub 文档为准；策略与端点独立评估 |
+| 智谱 / MiniMax / Kimi / 阿里云 Coding Plan | 未单独枚举 | 端点可能与直连不同；协议以厂商为准 |
+| Claude Pro / Max | 部分覆盖 | 与 Messages 同形时可 **`anthropic` + `chat` + 套餐 `base_url`** |
+| Codex · ChatGPT Plus、GitHub Copilot | 未接入 | 独立评估 |
 
-第三梯队（P3 及 parity 之后）：Groq、Mistral、Together、Fireworks 等海外托管，以及表中未单独展开的长尾厂商；路径仍以官方文档为准，多数可走 OpenAI 兼容层。
+第三梯队（P3 之后）：Groq、Mistral、Together、Fireworks 等；多数可走 OpenAI 兼容层。
 
 ## 中长期能力与架构
 
-下列项在设计准则中目前为**非目标**或需单独设计：自动重试、429/5xx 退避、共享或注入 `reqwest::Client`、流式 chat、multipart（语音/大图等）。采纳前须新增 trait / 客户端路径并更新准则，避免与现有「单次 JSON、整包读体」语义混同。
+在设计准则中目前为**非目标**或须单独设计前不承诺：**自动重试**、**429/5xx 退避**、**共享/注入 `reqwest::Client`**、**流式 chat**、**multipart（语音/大图）**。采纳须新 trait / 客户端路径并更新准则。
 
-**`audio`** 可择一对接具体厂商（往往涉及 multipart 与流式），或长期保持占位并在 README / rustdoc 中明确「未接远端」。若对接，需单独评估与各厂商 TTS/ASR API 的契约，并更新能力矩阵与 HTTP 文档。
+**`audio`**：对接具体厂商（常涉 multipart/流式）或长期占位；若对接须更新矩阵与 HTTP 文档。
 
 ## 日常维护
 
-矩阵与文档以厂商官方说明为准；接口变更时在 CHANGELOG 中提示调用方核对。新增或调整 `Provider` 枚举时勿忘 `#[non_exhaustive]` 与 `FromStr`、工厂分支、feature 表的全链路更新。
+矩阵与文档以厂商官方为准；接口变更在 CHANGELOG 提示调用方核对。调整 `Provider` 时维护 `#[non_exhaustive]`、`FromStr`、工厂分支、feature 表与文档全链路。

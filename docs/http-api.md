@@ -48,15 +48,27 @@
 
 ## Embed
 
+### OpenAI 兼容路径
+
 路径：`POST {base_url}/embeddings`。
 
 OpenAI 兼容实现（`OpenAI` / `Aliyun` / `Ollama`，需 `embed` 与对应厂商 feature）：请求体含 `model`、`input`（字符串数组）、`dimensions`（等于配置中的 `dimension`，必填）。成功时取 `data[].embedding`。
 
 智谱实现（`Zhipu`）：路径相同，请求体为 `model` 与 `input`，**不含** `dimensions` 字段；`ProviderConfig::dimension` 仍须在配置中提供，用于 `EmbedProvider::dimension()` 返回值，并与模型实际输出维数一致。
 
-`Anthropic`、`Google`：工厂返回 `Unsupported`（`capability` 为 `embed`）；未启用对应厂商 feature 时为 `ProviderDisabled`。
+### Google Gemini（embedContent / batchEmbedContents）
 
-典型 `base_url`：官方 OpenAI 同 Chat；Ollama 常为 `http://host:11434/v1`（部署方式依环境而定）。
+适用：`Google` + `embed` + `google`。实现 [Gemini Embeddings REST](https://ai.google.dev/api/rest/v1beta/models.embedContent) 形态：单条为 **`POST {base_url}/models/{model}:embedContent`**，批量（`encode_batch` 多于一条文本）为 **`POST {base_url}/models/{model}:batchEmbedContents`**。`{model}` 为 `ProviderConfig::model` 去掉可选的 `models/` 前缀后的路径段（与 Chat 的 `generateContent` 一致）。**不包含** Bearer；`api_key` 为 query **`key`**。
+
+请求 JSON：与官方示例一致，每条含 `model`（资源名字符串，形如 `models/{model_id}`，若配置已写 `models/…` 则不再重复拼接）、`content.parts[].text`；本库始终发送 **`outputDimensionality`**，等于配置中的 `dimension`（较早嵌入模型若不支持该字段，由上游返回错误）。成功时单条解析 `embedding.values`，批量解析 `embeddings[].values`；若返回向量长度与配置的 `dimension` 不一致，库侧返回 `Parse`。
+
+典型 `base_url`：`https://generativelanguage.googleapis.com/v1beta`（以当前 Google 文档为准）。
+
+### 未实现
+
+`Anthropic`：工厂返回 `Unsupported`（`capability` 为 `embed`）；未启用 `anthropic` feature 时为 `ProviderDisabled`。
+
+典型 `base_url`（OpenAI 兼容分支）：官方 OpenAI 同 Chat；Ollama 常为 `http://host:11434/v1`（部署方式依环境而定）。
 
 ## Rerank
 
