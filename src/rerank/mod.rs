@@ -2,7 +2,7 @@
 //!
 //! # 支持的厂商
 //!
-//! 仅 **`Aliyun`** 与 **`Zhipu`**（均须启用 `rerank` 与对应厂商 feature）。未启用对应厂商 feature 时选择阿里云或智谱会得到 [`Error::ProviderDisabled`]。**`OpenAI`**、**`Ollama`** 与 **`Anthropic`** 在本模态无实现，工厂返回 [`Error::Unsupported`]（`capability` 为 `"rerank"`）；未编译 `anthropic` feature 时选 `Anthropic` 为 [`Error::ProviderDisabled`]。
+//! 仅 **`Aliyun`** 与 **`Zhipu`**（均须启用 `rerank` 与对应厂商 feature）。未启用对应厂商 feature 时选择阿里云或智谱会得到 [`Error::ProviderDisabled`]。**`OpenAI`**、**`Ollama`**、**`Anthropic`** 与 **`Google`** 在本模态无实现，工厂返回 [`Error::Unsupported`]（`capability` 为 `"rerank"`）；未编译对应厂商 feature 时选 `Anthropic` / `Google` 为 [`Error::ProviderDisabled`]。
 //!
 //! # HTTP 路径（注意阿里云为复数）
 //!
@@ -77,6 +77,14 @@ pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn RerankProvider>>
         #[cfg(not(feature = "anthropic"))]
         Provider::Anthropic => Err(Error::ProviderDisabled("anthropic".to_string())),
 
+        #[cfg(feature = "google")]
+        Provider::Google => Err(Error::Unsupported {
+            provider: config.provider.to_string(),
+            capability: "rerank",
+        }),
+        #[cfg(not(feature = "google"))]
+        Provider::Google => Err(Error::ProviderDisabled("google".to_string())),
+
         Provider::OpenAI | Provider::Ollama => Err(Error::Unsupported {
             provider: config.provider.to_string(),
             capability: "rerank",
@@ -147,6 +155,34 @@ mod factory_tests {
         let cfg = ProviderConfig::new(Provider::Anthropic, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::ProviderDisabled(s)) => assert_eq!(s, "anthropic"),
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected ProviderDisabled, got {:?}", e),
+        }
+    }
+
+    #[cfg(feature = "google")]
+    #[test]
+    fn google_is_unsupported() {
+        let cfg = ProviderConfig::new(Provider::Google, "k", "https://x/v1", "m");
+        match create(&cfg) {
+            Err(Error::Unsupported {
+                provider,
+                capability,
+            }) => {
+                assert_eq!(provider, "google");
+                assert_eq!(capability, "rerank");
+            }
+            Ok(_) => panic!("expected error"),
+            Err(e) => panic!("expected Unsupported, got {:?}", e),
+        }
+    }
+
+    #[cfg(not(feature = "google"))]
+    #[test]
+    fn google_disabled_without_google_feature() {
+        let cfg = ProviderConfig::new(Provider::Google, "k", "https://x/v1", "m");
+        match create(&cfg) {
+            Err(Error::ProviderDisabled(s)) => assert_eq!(s, "google"),
             Ok(_) => panic!("expected error"),
             Err(e) => panic!("expected ProviderDisabled, got {:?}", e),
         }

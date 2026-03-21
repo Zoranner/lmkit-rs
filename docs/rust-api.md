@@ -8,7 +8,7 @@
 
 `ProviderConfig` 字段：`provider`（`Provider` 枚举）、`api_key`、`base_url`、`model`、`dimension`（可选，embed 必填）、`timeout`（可选，覆盖该次 HTTP 超时）。其中 **`model` 原样进入各模态请求**；本库不校验其是否在厂商侧可用，无效或无权使用的模型由上游返回错误，一般为 `Error::Api`（见 [设计准则](design-guidelines.md)「配置与 HTTP 约定」）。
 
-`Provider`：`OpenAI`、`Aliyun`、`Anthropic`、`Ollama`、`Zhipu`，`#[non_exhaustive]`，后续可能扩展。启用 `anthropic` 与 `chat` 时，Anthropic Messages 的 `anthropic-version` 请求头与库内常量 `model_provider::chat::ANTHROPIC_VERSION` 一致（与 [HTTP 文档](http-api.md) 对照）。
+`Provider`：`OpenAI`、`Aliyun`、`Anthropic`、`Google`、`Ollama`、`Zhipu`，`#[non_exhaustive]`，后续可能扩展。启用 `anthropic` 与 `chat` 时，Anthropic Messages 的 `anthropic-version` 请求头与库内常量 `model_provider::chat::ANTHROPIC_VERSION` 一致（与 [HTTP 文档](http-api.md) 对照）。启用 `google` 与 `chat` 时，Gemini 使用 query 参数 `key` 传递 `api_key`，见该文档 Chat 一节。
 
 `FromStr` 可按不区分大小写的字符串解析厂商名（如 `openai`、`Aliyun`）；未知名称返回 `Error::UnknownProvider`。
 
@@ -16,7 +16,7 @@
 
 `Error` 变体包括：未知厂商名、`ProviderDisabled`、`Unsupported`、`MissingConfig`、HTTP 非成功（`Api`，含状态码与消息）、HTTP 层错误（`Http`，来自 `reqwest`）、JSON 解析失败（`Parse`）、响应缺字段（`MissingField`）。
 
-`ProviderDisabled` 与 `Unsupported` 的划分以源码中 `Error` 的 rustdoc（`src/error.rs`）为准；也可用 `cargo doc --open` 查看。典型例子：重排序下 `OpenAI` / `Ollama` 为 `Unsupported`（`capability: "rerank"`），未启用阿里云或智谱 feature 却选该厂商时为 `ProviderDisabled`；文生图下 `Ollama` / `Zhipu` 为 `Unsupported`（`capability: "image"`），未启用 `openai` / `aliyun` 却选对应厂商时为 `ProviderDisabled`。各 `create_*` 条目与模块级 rustdoc 中有完整说明。
+`ProviderDisabled` 与 `Unsupported` 的划分以源码中 `Error` 的 rustdoc（`src/error.rs`）为准；也可用 `cargo doc --open` 查看。典型例子：重排序下 `OpenAI` / `Ollama` / `Google`（启用 `google` 时）等为 `Unsupported`（`capability: "rerank"`），未启用阿里云或智谱 feature 却选该厂商时为 `ProviderDisabled`；文生图下 `Ollama` / `Zhipu` / `Google`（启用 `google` 时）等为 `Unsupported`（`capability: "image"`），未启用 `openai` / `aliyun` 却选对应厂商时为 `ProviderDisabled`。各 `create_*` 条目与模块级 rustdoc 中有完整说明。
 
 `Result<T>` 为 `std::result::Result<T, Error>`。
 
@@ -26,11 +26,11 @@
 
 `create_chat_provider(&ProviderConfig) -> Result<Box<dyn ChatProvider>>`（feature `chat`）。
 
-`create_embed_provider(&ProviderConfig) -> Result<Box<dyn EmbedProvider>>`（feature `embed`）。`Anthropic` 返回 `Unsupported`（`capability: "embed"`）；未启用 `anthropic` feature 时选该厂商为 `ProviderDisabled`。
+`create_embed_provider(&ProviderConfig) -> Result<Box<dyn EmbedProvider>>`（feature `embed`）。`Anthropic`、`Google` 返回 `Unsupported`（`capability: "embed"`）；未启用对应厂商 feature 时选该厂商为 `ProviderDisabled`。
 
-`create_rerank_provider(&ProviderConfig) -> Result<Box<dyn RerankProvider>>`（feature `rerank`）。仅阿里云与智谱有实现；`OpenAI` / `Ollama` / `Anthropic` 返回 `Unsupported`；选了阿里云或智谱但未启用对应厂商 feature 时返回 `ProviderDisabled`。
+`create_rerank_provider(&ProviderConfig) -> Result<Box<dyn RerankProvider>>`（feature `rerank`）。仅阿里云与智谱有实现；`OpenAI` / `Ollama` / `Anthropic` / `Google` 返回 `Unsupported`；选了阿里云或智谱但未启用对应厂商 feature 时返回 `ProviderDisabled`。
 
-`create_image_provider(&ProviderConfig) -> Result<Box<dyn ImageProvider>>`（feature `image`）。`OpenAI` / `Aliyun` 需同时启用对应厂商 feature，否则为 `ProviderDisabled`；`Ollama` / `Zhipu` / `Anthropic` 为 `Unsupported`（`capability: "image"`）。
+`create_image_provider(&ProviderConfig) -> Result<Box<dyn ImageProvider>>`（feature `image`）。`OpenAI` / `Aliyun` 需同时启用对应厂商 feature，否则为 `ProviderDisabled`；`Ollama` / `Zhipu` / `Anthropic` / `Google` 为 `Unsupported`（`capability: "image"`）。
 
 `create_transcription_provider`、`create_speech_provider`（feature `audio`）：当前始终返回 `Unsupported`，仅占位。
 
@@ -38,7 +38,7 @@
 
 `ChatProvider`：`async fn chat(&self, prompt: &str) -> Result<String>`。
 
-实现为单轮用户消息、`temperature` 固定为 `0.2`；Anthropic 分支为 **Messages 兼容**（含 `max_tokens` 与响应 `content` 解析），可与官方或兼容网关对接，见 [HTTP 文档](http-api.md#chat)。
+实现为单轮用户消息、`temperature` 固定为 `0.2`；Anthropic 分支为 **Messages 兼容**（含 `max_tokens` 与响应 `content` 解析）；Google 分支为 **Gemini generateContent**（query `key`）。详见 [HTTP 文档](http-api.md#chat)。
 
 ## 向量
 

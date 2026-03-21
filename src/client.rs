@@ -1,4 +1,4 @@
-//! 共享 HTTP 客户端：JSON POST，默认 Bearer，或 [`HttpClient::post_json_with_headers`] 自定义请求头（如 Anthropic `x-api-key`）。
+//! 共享 HTTP 客户端：JSON POST，默认 Bearer；[`HttpClient::post_json_with_headers`] 自定义请求头（如 Anthropic `x-api-key`）；[`HttpClient::post_json_query`] 在 URL 上附加 query 且不带 Bearer（如 Google Gemini `key`）。
 
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
@@ -86,13 +86,48 @@ impl HttpClient {
 
         serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))
     }
+
+    /// POST JSON，URL query 参数（如 `key`），无 `Authorization` 头；本方法会设置 `Content-Type: application/json`。
+    pub async fn post_json_query<Req, Resp, F>(
+        &self,
+        url: &str,
+        query: &[(&str, &str)],
+        body: &Req,
+        map_err_body: F,
+    ) -> Result<Resp>
+    where
+        Req: Serialize + ?Sized,
+        Resp: DeserializeOwned,
+        F: FnOnce(String) -> String,
+    {
+        let response = self
+            .inner
+            .post(url)
+            .query(query)
+            .header("Content-Type", "application/json")
+            .json(body)
+            .send()
+            .await?;
+
+        let status = response.status();
+        let body_text = response.text().await?;
+
+        if !status.is_success() {
+            return Err(Error::Api {
+                status: status.as_u16(),
+                message: map_err_body(body_text),
+            });
+        }
+
+        serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
-    use wiremock::matchers::{body_json, header, method, path};
+    use wiremock::matchers::{body_json, header, method, path, query_param};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[derive(Serialize)]
@@ -264,6 +299,59 @@ mod tests {
             Error::Api { status, message } => {
                 assert_eq!(status, 403);
                 assert_eq!(message, "denied");
+            }
+            e => panic!("unexpected {e:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn post_json_query_success_and_sends_query() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/v1beta/models/m:generateContent"))
+            .and(query_param("key", "secret-key"))
+            .and(header("content-type", "application/json"))
+            .and(body_json(serde_json::json!({ "n": 3 })))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(serde_json::json!({ "msg": "ok" })),
+            )
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/v1beta/models/m:generateContent", server.uri());
+        let out: EchoResp = client
+            .post_json_query(&url, &[("key", "secret-key")], &EchoReq { n: 3 }, |s| s)
+            .await
+            .unwrap();
+        assert_eq!(out.msg, "ok");
+    }
+
+    #[tokio::test]
+    async fn post_json_query_api_error() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/q"))
+            .respond_with(ResponseTemplate::new(400).set_body_string("bad"))
+            .mount(&server)
+            .await;
+
+        let client = HttpClient::new(Duration::from_secs(5)).unwrap();
+        let url = format!("{}/q", server.uri());
+        let err = client
+            .post_json_query::<EchoReq, EchoResp, _>(
+                &url,
+                &[("key", "k")],
+                &EchoReq { n: 1 },
+                |s| s,
+            )
+            .await
+            .unwrap_err();
+
+        match err {
+            Error::Api { status, message } => {
+                assert_eq!(status, 400);
+                assert_eq!(message, "bad");
             }
             e => panic!("unexpected {e:?}"),
         }

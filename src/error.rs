@@ -4,7 +4,7 @@
 //!
 //! **`ProviderDisabled`**：当前编译配置下该厂商或模态未启用（Cargo feature 组合不满足），例如启了 `embed` 但未启 `zhipu` 时仍选智谱，或启了 `rerank` 但未启 `aliyun` / `zhipu` 时仍选阿里云 / 智谱。
 //!
-//! **`Unsupported`**：对应模态的工厂已编译，但该厂商在该能力上**没有实现**（例如 `create_image_provider` 对 **`Ollama` / `Zhipu`**，或 `create_rerank_provider` 对 **`OpenAI` / `Ollama`**），或占位能力（如 `audio` 工厂尚未接任何远端）。已支持文生图但未把 `openai` / `aliyun` 编进产物时，选对应厂商应得到 `ProviderDisabled`，而非本变体。
+//! **`Unsupported`**：对应模态的工厂已编译，但该厂商在该能力上**没有实现**（例如 `create_image_provider` 对 **`Ollama` / `Zhipu`**，或 `create_rerank_provider` 对 **`OpenAI` / `Ollama` / `Google`**），或占位能力（如 `audio` 工厂尚未接任何远端）。已支持文生图但未把 `openai` / `aliyun` 编进产物时，选对应厂商应得到 `ProviderDisabled`，而非本变体。
 
 use thiserror::Error;
 

@@ -8,7 +8,7 @@
 //!
 //! **`Zhipu`**：路径仍为 `…/embeddings`，请求体仅 `model` 与 `input`，**不发送 `dimensions` 字段**；配置中的 `dimension` 仍必填，用于 [`EmbedProvider::dimension`] 返回值，且须与模型实际输出维数一致。未启用 `zhipu` feature 时选择智谱会得到 [`Error::ProviderDisabled`]。
 //!
-//! **`Anthropic`**：工厂返回 [`Error::Unsupported`]（`capability` 为 `"embed"`）；未启用 `anthropic` feature 时选该厂商为 [`Error::ProviderDisabled`]。
+//! **`Anthropic`**、**`Google`**：工厂返回 [`Error::Unsupported`]（`capability` 为 `"embed"`）；未启用对应厂商 feature 时选该厂商为 [`Error::ProviderDisabled`]。
 //!
 //! # 文本预处理
 //!
@@ -16,7 +16,7 @@
 //!
 //! # 鉴权
 //!
-//! 与其它模态相同：`Authorization: Bearer {api_key}` 的 JSON POST。
+//! 已实现嵌入的厂商使用 `Authorization: Bearer {api_key}` 的 JSON POST。`Anthropic`、`Google` 等无嵌入实现，工厂阶段即返回错误，不发起 HTTP。
 
 mod openai_compat;
 #[cfg(feature = "zhipu")]
@@ -93,5 +93,13 @@ pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn EmbedProvider>> 
         }),
         #[cfg(not(feature = "anthropic"))]
         Provider::Anthropic => Err(Error::ProviderDisabled("anthropic".to_string())),
+
+        #[cfg(feature = "google")]
+        Provider::Google => Err(Error::Unsupported {
+            provider: config.provider.to_string(),
+            capability: "embed",
+        }),
+        #[cfg(not(feature = "google"))]
+        Provider::Google => Err(Error::ProviderDisabled("google".to_string())),
     }
 }

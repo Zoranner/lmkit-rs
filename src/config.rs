@@ -11,6 +11,7 @@ pub enum Provider {
     OpenAI,
     Aliyun,
     Anthropic,
+    Google,
     Ollama,
     Zhipu,
 }
@@ -21,6 +22,7 @@ impl fmt::Display for Provider {
             Provider::OpenAI => "openai",
             Provider::Aliyun => "aliyun",
             Provider::Anthropic => "anthropic",
+            Provider::Google => "google",
             Provider::Ollama => "ollama",
             Provider::Zhipu => "zhipu",
         };
@@ -36,6 +38,7 @@ impl FromStr for Provider {
             "openai" => Ok(Provider::OpenAI),
             "aliyun" => Ok(Provider::Aliyun),
             "anthropic" => Ok(Provider::Anthropic),
+            "google" => Ok(Provider::Google),
             "ollama" => Ok(Provider::Ollama),
             "zhipu" => Ok(Provider::Zhipu),
             other => Err(crate::error::Error::UnknownProvider(other.to_string())),
@@ -87,6 +90,7 @@ mod tests {
             Provider::from_str("Anthropic").unwrap(),
             Provider::Anthropic
         );
+        assert_eq!(Provider::from_str("google").unwrap(), Provider::Google);
     }
 
     #[test]

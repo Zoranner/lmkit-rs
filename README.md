@@ -6,7 +6,7 @@
 
 ## 🚀 快速接入
 
-在 `Cargo.toml` 里写上依赖和 feature（路径发布时改成你的实际路径或 crates.io 版本号）：
+在 `Cargo.toml` 里添加依赖与 feature：
 
 ```toml
 [dependencies]
@@ -52,29 +52,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 |:---:|:---:|:---:|:---:|:---:|
 | OpenAI | ✅ | ✅ | ❌ | ✅ |
 | Anthropic | ✅ 🔧 | ❌ | ❌ | ❌ |
+| Google (Gemini) | ✅ 🔧 | ❌ | ❌ | ❌ |
 | 阿里云 | ✅ | ✅ | ✅ | ✅ 🔧 |
 | Ollama | ✅ | ✅ | ❌ | ❌ |
 | 智谱 | ✅ | ✅ 🔧 | ✅ | ❌ |
 
-图例：🔧 表示「专用请求体或与 OpenAI 路径不一致」。**Anthropic 对话**为 **Anthropic Messages 兼容**（`POST …/messages`，`x-api-key` + `anthropic-version`，非 Bearer）；与 OpenAI 兼容层类似，只要网关遵守同一契约（含常见 Coding Plan 通道），可只改 `base_url` 接入。智谱 Embed 等如此；**阿里云文生图**使用 DashScope 原生 `POST .../services/aigc/multimodal-generation/generation`，不是 `compatible-mode/v1` 下的 OpenAI 文生图路径。
-
-图像生成：`openai` + `image` 时，`base_url` 一般为 `https://api.openai.com/v1`，走 `.../images/generations`。`aliyun` + `image` 时，`base_url` 需为 **`https://dashscope.aliyuncs.com/api/v1`**（或新加坡等地域的 `https://dashscope-intl.aliyuncs.com/api/v1`），`model` 填百炼文生图模型名（如 `qwen-image-plus`），与对话用的 `compatible-mode/v1` 网关不同。语音识别与合成仍为占位，可开 `audio` 查看类型。
-
-## ⚙️ 常用 feature 组合
-
-| 你想用 | `features` 示例 |
-|:---|:---|
-| 只要 OpenAI 对话 + 向量 | 默认不写，或 `["openai", "chat", "embed"]` |
-| 全开厂商与能力 | `["full"]` 或 `["all"]` |
-| 仅本地 Ollama | `["ollama", "chat", "embed"]` |
-| 阿里云 rerank | 在已有 embed/chat 上再加 `aliyun` 与 `rerank` |
-| OpenAI 文生图 | `["openai", "image"]`（可与 `chat`、`embed` 等组合） |
-| 阿里云文生图（千问图像等） | `["aliyun", "image"]`，`base_url` 见上文 |
-| Anthropic Messages 兼容对话 | `["anthropic", "chat"]`；直连官方时常用 `base_url` = `https://api.anthropic.com/v1`，Coding Plan / 兼容网关则填对方提供的根 URL |
-
-厂商 feature（`openai` / `anthropic` / `aliyun` / `ollama` / `zhipu`）与模态 feature（`chat` / `embed` / `rerank` / `image` / `audio`）要同时满足才会在对应工厂里可用；配错组合会得到明确的 `Error`，而不是静默失败。若某能力在矩阵中为 ❌（例如 OpenAI 的 Rerank），启用该模态 feature 后工厂会对该厂商返回 `Error::Unsupported`，而不是 `ProviderDisabled`；未把对应厂商编进产物时仍为 `ProviderDisabled`。细节见 [Rust 公共 API](docs/rust-api.md) 与 [变更记录](CHANGELOG.md)。
-
-向 crates.io 发版时：先把 `Cargo.toml` 里的 `version` 调到与即将打的标签一致（如 `v0.2.1` 对应 `0.2.1`），更新 [CHANGELOG](CHANGELOG.md) 后推送该标签。GitHub Actions（`.github/workflows/cargo-publish.yml`）会在标签推送后执行全 feature 的格式化、Clippy 与测试，通过后使用仓库 Secret `CARGO_ACCESS_TOKEN` 执行 `cargo publish`。默认不在普通 push 或 PR 上跑这套检查。
+图例：🔧 表示该能力与 **OpenAI 兼容形态不一致**（路径、请求体或鉴权之一与 `…/chat/completions` + Bearer 不同）。矩阵只作概览；**各厂商的 URL、`base_url`、`model` 写法与请求字段**以 [HTTP 端点汇总](docs/http-api.md) 与 [接口一览](docs/interfaces.md) 为准，避免在 README 里随厂商数量膨胀。`audio` 仍为占位，仅暴露类型，见该文档 Audio 一节。
 
 ## 📜 许可证
 
