@@ -13,6 +13,7 @@
 
 ## 功能补全（按需求排期）
 
+- [ ] **base_url 默认值** — 为各厂商（OpenAI / Anthropic / Google / 阿里云 / 智谱 / Ollama）在 `ProviderConfig` 中提供默认 `base_url`，简化用户配置
 - [ ] **Anthropic Embed** — 官方若提供可用 HTTP API 再接入（当前矩阵为「—」）
 - [ ] **Google / Anthropic Image** — 视 API 形态评估独立实现或文档化「仅 OpenAI 兼容路径」
 - [ ] **Audio** — `TranscriptionProvider` / `SpeechProvider` 仍为占位；实装通常涉及 multipart/流式，需单独设计后再动工厂与准则文档
