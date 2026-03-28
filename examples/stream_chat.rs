@@ -6,7 +6,7 @@
 //! ```
 
 use futures::StreamExt;
-use model_provider::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
+use lmkit::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

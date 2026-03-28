@@ -1,6 +1,6 @@
 # API 参考
 
-本文档描述 model-provider 的 Rust 公共 API。
+本文档描述 lmkit 的 Rust 公共 API。
 
 本地生成完整文档：`cargo doc --all-features --no-deps --open`
 
@@ -173,7 +173,7 @@ pub trait RerankProvider: Send + Sync {
 }
 ```
 
-文档重排序，返回按相关性降序排列的结果。
+文本重排序，返回按相关性降序排列的结果。
 
 ### ImageProvider
 
@@ -252,7 +252,7 @@ pub enum FinishReason {
 
 ```rust
 use futures::StreamExt;
-use model_provider::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
+use lmkit::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
 
 let cfg = ProviderConfig::new(
     Provider::OpenAI,

@@ -1,13 +1,13 @@
 # 贡献指南
 
-欢迎参与 model-provider 的开发。
+欢迎参与 lmkit 的开发。
 
 ## 开发环境
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-repo/model-provider.git
-cd model-provider
+git clone https://github.com/your-repo/lmkit.git
+cd lmkit
 
 # 运行测试（全 feature）
 cargo test --all-features
