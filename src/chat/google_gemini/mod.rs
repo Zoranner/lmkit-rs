@@ -312,10 +312,7 @@ fn google_parse_sse_event(ev: SseEvent) -> Option<Result<ChatChunk>> {
                 text.push_str(t);
             }
             if let Some(fc) = p.get("functionCall") {
-                let name = fc
-                    .get("name")
-                    .and_then(|x| x.as_str())
-                    .map(str::to_string);
+                let name = fc.get("name").and_then(|x| x.as_str()).map(str::to_string);
                 let args_str = fc
                     .get("args")
                     .map(|a| serde_json::to_string(a).unwrap_or_else(|_| "{}".to_string()));
@@ -387,7 +384,10 @@ mod json_shape_tests {
         let chat = GoogleGeminiChat::new(&cfg).unwrap();
         let req = ChatRequest {
             messages: vec![ChatMessage::user("hi")],
-            tools: Some(vec![ToolDefinition::function("get_weather", serde_json::json!({}))]),
+            tools: Some(vec![ToolDefinition::function(
+                "get_weather",
+                serde_json::json!({}),
+            )]),
             tool_choice: Some(ToolChoice::Tool("get_weather".into())),
             temperature: Some(0.7),
             max_tokens: Some(512),

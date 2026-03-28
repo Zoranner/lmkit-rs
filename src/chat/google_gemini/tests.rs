@@ -70,10 +70,7 @@ async fn complete_errors_when_tool_message_missing_function_name() {
     let server = MockServer::start().await;
     let chat = GoogleGeminiChat::new(&test_config(&server)).unwrap();
     let req = ChatRequest {
-        messages: vec![
-            ChatMessage::user("hi"),
-            ChatMessage::tool("call_1", "{}"),
-        ],
+        messages: vec![ChatMessage::user("hi"), ChatMessage::tool("call_1", "{}")],
         ..Default::default()
     };
     let err = chat.complete(&req).await.unwrap_err();
@@ -242,7 +239,9 @@ async fn stream_generate_content_yields_text_chunk() {
     let server = MockServer::start().await;
     let sse_body = "data: {\"candidates\":[{\"content\":{\"parts\":[{\"text\":\"Hi\"}]}}]}\n\n";
     Mock::given(method("POST"))
-        .and(path_regex(r"/v1beta/models/[^/]+(:|%3A)streamGenerateContent"))
+        .and(path_regex(
+            r"/v1beta/models/[^/]+(:|%3A)streamGenerateContent",
+        ))
         .and(query_param("key", "AIza-test"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -270,7 +269,9 @@ async fn stream_maps_finish_reason_tool_calls_when_function_call_with_stop() {
     });
     let sse_body = format!("data: {payload}\n\n");
     Mock::given(method("POST"))
-        .and(path_regex(r"/v1beta/models/[^/]+(:|%3A)streamGenerateContent"))
+        .and(path_regex(
+            r"/v1beta/models/[^/]+(:|%3A)streamGenerateContent",
+        ))
         .and(query_param("key", "AIza-test"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -296,7 +297,9 @@ async fn stream_yields_function_call_delta() {
     let payload = serde_json::json!({"candidates":[{"content":{"parts":[{"functionCall":{"name":"fn","args":{"a":1}}}]}}]});
     let sse_body = format!("data: {payload}\n\n");
     Mock::given(method("POST"))
-        .and(path_regex(r"/v1beta/models/[^/]+(:|%3A)streamGenerateContent"))
+        .and(path_regex(
+            r"/v1beta/models/[^/]+(:|%3A)streamGenerateContent",
+        ))
         .and(query_param("key", "AIza-test"))
         .respond_with(
             ResponseTemplate::new(200)
@@ -307,7 +310,10 @@ async fn stream_yields_function_call_delta() {
         .await;
 
     let chat = GoogleGeminiChat::new(&test_config(&server)).unwrap();
-    let mut stream = chat.complete_stream(&ChatRequest::single_user("x")).await.unwrap();
+    let mut stream = chat
+        .complete_stream(&ChatRequest::single_user("x"))
+        .await
+        .unwrap();
     let chunk = stream.next().await.unwrap().unwrap();
     assert!(chunk.tool_call_deltas.is_some());
     let d = &chunk.tool_call_deltas.as_ref().unwrap()[0];

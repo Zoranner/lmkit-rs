@@ -91,7 +91,10 @@ impl AnthropicCompatChat {
             .filter(|t| !t.is_empty())
             .map(|t| t.iter().map(tool_to_anthropic).collect());
         let tool_choice = if tools.is_some() {
-            request.tool_choice.as_ref().and_then(anthropic_tool_choice_json)
+            request
+                .tool_choice
+                .as_ref()
+                .and_then(anthropic_tool_choice_json)
         } else {
             None
         };
@@ -184,7 +187,9 @@ fn user_content(m: &ChatMessage) -> Result<AnthropicContent> {
 fn assistant_content(m: &ChatMessage) -> Result<AnthropicContent> {
     let has_tools = m.tool_calls.as_ref().is_some_and(|t| !t.is_empty());
     if !has_tools {
-        return Ok(AnthropicContent::Text(m.content.clone().unwrap_or_default()));
+        return Ok(AnthropicContent::Text(
+            m.content.clone().unwrap_or_default(),
+        ));
     }
     let mut blocks: Vec<Value> = Vec::new();
     if let Some(t) = &m.content {
@@ -369,10 +374,7 @@ fn anthropic_parse_sse_event(ev: SseEvent) -> Option<Result<AnthropicStreamParse
             let block = v.get("content_block")?;
             if block.get("type").and_then(|t| t.as_str()) == Some("tool_use") {
                 let index = v.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as u32;
-                let id = block
-                    .get("id")
-                    .and_then(|x| x.as_str())
-                    .map(str::to_string);
+                let id = block.get("id").and_then(|x| x.as_str()).map(str::to_string);
                 let name = block
                     .get("name")
                     .and_then(|x| x.as_str())

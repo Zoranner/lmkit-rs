@@ -212,7 +212,10 @@ async fn messages_stream_tool_use_deltas() {
         .await;
 
     let chat = AnthropicCompatChat::new(&test_config(&server)).unwrap();
-    let mut stream = chat.complete_stream(&ChatRequest::single_user("x")).await.unwrap();
+    let mut stream = chat
+        .complete_stream(&ChatRequest::single_user("x"))
+        .await
+        .unwrap();
     let mut chunks = Vec::new();
     while let Some(item) = stream.next().await {
         chunks.push(item.unwrap());
@@ -220,7 +223,9 @@ async fn messages_stream_tool_use_deltas() {
     assert_eq!(chunks.len(), 3);
     assert!(chunks[0].tool_call_deltas.is_some());
     assert_eq!(
-        chunks[0].tool_call_deltas.as_ref().unwrap()[0].id.as_deref(),
+        chunks[0].tool_call_deltas.as_ref().unwrap()[0]
+            .id
+            .as_deref(),
         Some("tu_1")
     );
     assert_eq!(

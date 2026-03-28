@@ -60,7 +60,8 @@ pub trait ChatProvider: Send + Sync {
 
     /// 单条 `user` 消息流式。
     async fn chat_stream(&self, prompt: &str) -> Result<ChatStream> {
-        self.complete_stream(&ChatRequest::single_user(prompt)).await
+        self.complete_stream(&ChatRequest::single_user(prompt))
+            .await
     }
 }
 

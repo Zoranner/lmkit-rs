@@ -146,7 +146,10 @@ async fn complete_returns_tool_calls() {
         .await;
 
     let chat = OpenaiCompatChat::new(&test_config(&server)).unwrap();
-    let r = chat.complete(&ChatRequest::single_user("weather?")).await.unwrap();
+    let r = chat
+        .complete(&ChatRequest::single_user("weather?"))
+        .await
+        .unwrap();
     assert!(r.content.is_none());
     let tc = r.tool_calls.as_ref().unwrap();
     assert_eq!(tc.len(), 1);
@@ -215,7 +218,10 @@ async fn complete_stream_yields_tool_call_deltas() {
         .await;
 
     let chat = OpenaiCompatChat::new(&test_config(&server)).unwrap();
-    let mut stream = chat.complete_stream(&ChatRequest::single_user("x")).await.unwrap();
+    let mut stream = chat
+        .complete_stream(&ChatRequest::single_user("x"))
+        .await
+        .unwrap();
     let mut chunks = Vec::new();
     while let Some(item) = stream.next().await {
         chunks.push(item.unwrap());

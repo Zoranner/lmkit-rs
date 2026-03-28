@@ -213,12 +213,16 @@ fn parse_openai_chat_response(v: &Value) -> Result<ChatResponse> {
         .and_then(|c| c.as_array())
         .ok_or(Error::MissingField("choices"))?;
     let ch = choices.first().ok_or(Error::MissingField("choices[0]"))?;
-    let message = ch.get("message").ok_or(Error::MissingField("choices[0].message"))?;
+    let message = ch
+        .get("message")
+        .ok_or(Error::MissingField("choices[0].message"))?;
     let content = message
         .get("content")
         .and_then(|c| c.as_str())
         .map(str::to_string);
-    let tool_calls = message.get("tool_calls").and_then(parse_tool_calls_from_json);
+    let tool_calls = message
+        .get("tool_calls")
+        .and_then(parse_tool_calls_from_json);
     let finish_reason = ch
         .get("finish_reason")
         .and_then(|f| f.as_str())
@@ -302,17 +306,12 @@ fn parse_delta_tool_calls(v: &Value) -> Option<Vec<ToolCallDelta>> {
     let mut out = Vec::new();
     for item in arr {
         let index = item.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as u32;
-        let id = item
-            .get("id")
-            .and_then(|x| x.as_str())
-            .map(str::to_string);
+        let id = item.get("id").and_then(|x| x.as_str()).map(str::to_string);
         let (fname, fargs) = item
             .get("function")
             .map(|f| {
                 (
-                    f.get("name")
-                        .and_then(|n| n.as_str())
-                        .map(str::to_string),
+                    f.get("name").and_then(|n| n.as_str()).map(str::to_string),
                     f.get("arguments")
                         .and_then(|a| a.as_str())
                         .map(str::to_string),
