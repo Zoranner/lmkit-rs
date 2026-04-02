@@ -36,6 +36,8 @@ struct OpenaiChatCompletionsBody {
     top_p: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     stream: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    response_format: Option<Value>,
 }
 
 #[derive(Debug, Serialize)]
@@ -125,6 +127,7 @@ impl OpenaiCompatChat {
             max_tokens: request.max_tokens,
             top_p: request.top_p,
             stream: stream.then_some(true),
+            response_format: request.response_format.clone(),
         }
     }
 }

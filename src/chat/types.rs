@@ -161,6 +161,8 @@ pub struct ChatRequest {
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
     pub top_p: Option<f32>,
+    /// OpenAI Chat Completions 的 `response_format`（如 `{"type":"json_object"}`）。仅 OpenAI 兼容路径会序列化；其它厂商实现忽略。
+    pub response_format: Option<Value>,
 }
 
 impl ChatRequest {

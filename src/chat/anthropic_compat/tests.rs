@@ -115,6 +115,7 @@ async fn complete_serializes_tool_choice_and_sampling() {
         temperature: Some(0.7),
         max_tokens: Some(512),
         top_p: None,
+        ..Default::default()
     };
     let r = chat.complete(&req).await.unwrap();
     assert_eq!(r.content.as_deref(), Some("ok"));

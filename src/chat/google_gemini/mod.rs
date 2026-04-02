@@ -392,6 +392,7 @@ mod json_shape_tests {
             temperature: Some(0.7),
             max_tokens: Some(512),
             top_p: None,
+            ..Default::default()
         };
         let v = chat.build_request_json(&req).unwrap();
         let t = v["generationConfig"]["temperature"].as_f64().unwrap();
