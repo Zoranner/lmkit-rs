@@ -1,5 +1,5 @@
 use super::*;
-use crate::chat::{ToolChoice, ToolDefinition};
+use crate::chat::{ResponseFormat, ToolChoice, ToolDefinition};
 use crate::config::Provider;
 use futures::StreamExt;
 use wiremock::matchers::{body_json, header, method, path};
@@ -372,4 +372,56 @@ async fn chat_stream_http_error_before_body() {
         }
         other => panic!("expected Api, got {:?}", other),
     }
+}
+
+#[tokio::test]
+async fn complete_serializes_response_format_json_object() {
+    let server = MockServer::start().await;
+    Mock::given(method("POST"))
+        .and(path("/chat/completions"))
+        .and(body_json(serde_json::json!({
+            "model": "gpt-4o-mini",
+            "messages": [{ "role": "user", "content": "hi" }],
+            "temperature": 0.2,
+            "response_format": { "type": "json_object" },
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "choices": [{ "message": { "role": "assistant", "content": "{}" } }]
+        })))
+        .mount(&server)
+        .await;
+
+    let chat = OpenaiCompatChat::new(&test_config(&server)).unwrap();
+    let req = ChatRequest {
+        messages: vec![ChatMessage::user("hi")],
+        response_format: Some(ResponseFormat::JsonObject),
+        ..Default::default()
+    };
+    let r = chat.complete(&req).await.unwrap();
+    assert_eq!(r.content.as_deref(), Some("{}"));
+}
+
+#[tokio::test]
+async fn complete_omits_response_format_when_none() {
+    let server = MockServer::start().await;
+    // body_json 要求请求体精确包含且不含额外字段；不含 response_format 才能命中此 mock
+    Mock::given(method("POST"))
+        .and(path("/chat/completions"))
+        .and(body_json(serde_json::json!({
+            "model": "gpt-4o-mini",
+            "messages": [{ "role": "user", "content": "hi" }],
+            "temperature": 0.2,
+        })))
+        .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
+            "choices": [{ "message": { "role": "assistant", "content": "ok" } }]
+        })))
+        .mount(&server)
+        .await;
+
+    let chat = OpenaiCompatChat::new(&test_config(&server)).unwrap();
+    let r = chat
+        .complete(&ChatRequest::single_user("hi"))
+        .await
+        .unwrap();
+    assert_eq!(r.content.as_deref(), Some("ok"));
 }

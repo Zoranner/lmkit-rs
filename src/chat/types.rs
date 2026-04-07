@@ -2,6 +2,20 @@
 
 use serde_json::Value;
 
+/// OpenAI Chat Completions 的 `response_format` 参数。
+///
+/// 仅 OpenAI 兼容路径（`OpenAI` / `Aliyun` / `Ollama` / `Zhipu`）会将此字段序列化到请求体；
+/// `Anthropic` 与 `Google` 路径**忽略**此字段并产生 `tracing::warn!`。
+#[derive(Debug, Clone, PartialEq)]
+pub enum ResponseFormat {
+    /// `{"type": "text"}`：纯文本输出（默认行为，通常无需显式指定）。
+    Text,
+    /// `{"type": "json_object"}`：强制输出合法 JSON 对象。
+    JsonObject,
+    /// `{"type": "json_schema", "json_schema": ...}`：结构化输出（需提供 JSON Schema）。
+    JsonSchema(Value),
+}
+
 /// 消息角色。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Role {
@@ -161,8 +175,8 @@ pub struct ChatRequest {
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
     pub top_p: Option<f32>,
-    /// OpenAI Chat Completions 的 `response_format`（如 `{"type":"json_object"}`）。仅 OpenAI 兼容路径会序列化；其它厂商实现忽略。
-    pub response_format: Option<Value>,
+    /// 输出格式约束；仅 OpenAI 兼容路径序列化，Anthropic / Google 路径忽略（见 [`ResponseFormat`]）。
+    pub response_format: Option<ResponseFormat>,
 }
 
 impl ChatRequest {

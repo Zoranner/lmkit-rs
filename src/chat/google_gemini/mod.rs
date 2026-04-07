@@ -41,6 +41,11 @@ impl GoogleGeminiChat {
     }
 
     fn build_request_json(&self, request: &ChatRequest) -> Result<Value> {
+        if request.response_format.is_some() {
+            tracing::warn!(
+                "response_format is not supported by the Google Gemini API and will be ignored"
+            );
+        }
         let (system_instruction, contents) = gemini_contents_from_chat(request)?;
         let mut generation_config = json!({
             "temperature": request.temperature.unwrap_or(DEFAULT_TEMPERATURE),
@@ -370,7 +375,7 @@ fn map_gemini_finish_reason(s: &str) -> Option<FinishReason> {
 #[cfg(test)]
 mod json_shape_tests {
     use super::*;
-    use crate::chat::{ToolChoice, ToolDefinition};
+    use crate::chat::{ResponseFormat, ToolChoice, ToolDefinition};
     use crate::config::{Provider, ProviderConfig};
 
     #[test]
@@ -391,7 +396,6 @@ mod json_shape_tests {
             tool_choice: Some(ToolChoice::Tool("get_weather".into())),
             temperature: Some(0.7),
             max_tokens: Some(512),
-            top_p: None,
             ..Default::default()
         };
         let v = chat.build_request_json(&req).unwrap();
@@ -403,6 +407,27 @@ mod json_shape_tests {
         assert_eq!(
             v["toolConfig"]["functionCallingConfig"]["allowedFunctionNames"][0],
             "get_weather"
+        );
+    }
+
+    #[test]
+    fn build_request_json_ignores_response_format() {
+        let cfg = ProviderConfig::new(
+            Provider::Google,
+            "k",
+            "https://example.invalid/v1beta".to_string(),
+            "gemini-2.0-flash",
+        );
+        let chat = GoogleGeminiChat::new(&cfg).unwrap();
+        let req = ChatRequest {
+            messages: vec![ChatMessage::user("hi")],
+            response_format: Some(ResponseFormat::JsonObject),
+            ..Default::default()
+        };
+        let v = chat.build_request_json(&req).unwrap();
+        assert!(
+            v.get("response_format").is_none(),
+            "Gemini body must not contain response_format"
         );
     }
 }

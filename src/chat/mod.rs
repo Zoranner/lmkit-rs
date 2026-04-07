@@ -28,7 +28,7 @@ use google_gemini::GoogleGeminiChat;
 use openai_compat::OpenaiCompatChat;
 pub use types::{
     ChatChunk, ChatMessage, ChatRequest, ChatResponse, FinishReason, FunctionCallResult,
-    FunctionDefinition, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
+    FunctionDefinition, ResponseFormat, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
 };
 
 use std::pin::Pin;

@@ -14,7 +14,7 @@ use crate::sse::SseEvent;
 
 use super::{
     ChatChunk, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
-    FunctionCallResult, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
+    FunctionCallResult, ResponseFormat, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
 };
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -127,8 +127,19 @@ impl OpenaiCompatChat {
             max_tokens: request.max_tokens,
             top_p: request.top_p,
             stream: stream.then_some(true),
-            response_format: request.response_format.clone(),
+            response_format: request
+                .response_format
+                .as_ref()
+                .map(response_format_to_value),
         }
+    }
+}
+
+fn response_format_to_value(f: &ResponseFormat) -> Value {
+    match f {
+        ResponseFormat::Text => json!({"type": "text"}),
+        ResponseFormat::JsonObject => json!({"type": "json_object"}),
+        ResponseFormat::JsonSchema(schema) => json!({"type": "json_schema", "json_schema": schema}),
     }
 }
 

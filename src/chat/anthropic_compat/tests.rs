@@ -1,5 +1,5 @@
 use super::*;
-use crate::chat::{ChatChunk, FinishReason, ToolChoice, ToolDefinition};
+use crate::chat::{ChatChunk, FinishReason, ResponseFormat, ToolChoice, ToolDefinition};
 use crate::config::Provider;
 use futures::StreamExt;
 use wiremock::matchers::{body_json, header, method, path};
@@ -10,6 +10,15 @@ fn test_config(server: &MockServer) -> ProviderConfig {
         Provider::Anthropic,
         "sk-ant-test",
         format!("{}/v1", server.uri()),
+        "claude-sonnet-4-20250514",
+    )
+}
+
+fn test_config_static() -> ProviderConfig {
+    ProviderConfig::new(
+        Provider::Anthropic,
+        "sk-ant-test",
+        "https://api.anthropic.com/v1",
         "claude-sonnet-4-20250514",
     )
 }
@@ -114,7 +123,6 @@ async fn complete_serializes_tool_choice_and_sampling() {
         tool_choice: Some(ToolChoice::Tool("get_weather".into())),
         temperature: Some(0.7),
         max_tokens: Some(512),
-        top_p: None,
         ..Default::default()
     };
     let r = chat.complete(&req).await.unwrap();
@@ -333,4 +341,21 @@ async fn messages_stream_yields_text_delta_and_stop() {
     assert_eq!(chunks.len(), 2);
     assert_eq!(chunks[0], ChatChunk::delta("Hi"));
     assert_eq!(chunks[1], ChatChunk::finish(FinishReason::Stop));
+}
+
+#[test]
+fn build_body_ignores_response_format() {
+    let cfg = test_config_static();
+    let chat = AnthropicCompatChat::new(&cfg).unwrap();
+    let req = ChatRequest {
+        messages: vec![ChatMessage::user("hi")],
+        response_format: Some(ResponseFormat::JsonObject),
+        ..Default::default()
+    };
+    let body = chat.build_body(&req, false).unwrap();
+    let v = serde_json::to_value(&body).unwrap();
+    assert!(
+        v.get("response_format").is_none(),
+        "Anthropic body must not contain response_format"
+    );
 }

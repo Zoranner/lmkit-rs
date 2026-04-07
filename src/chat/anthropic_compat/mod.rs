@@ -84,6 +84,11 @@ impl AnthropicCompatChat {
     }
 
     fn build_body(&self, request: &ChatRequest, stream: bool) -> Result<MessagesBody> {
+        if request.response_format.is_some() {
+            tracing::warn!(
+                "response_format is not supported by the Anthropic Messages API and will be ignored"
+            );
+        }
         let (system, messages) = build_anthropic_messages(&request.messages)?;
         let tools: Option<Vec<AnthropicTool>> = request
             .tools
