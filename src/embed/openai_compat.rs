@@ -50,8 +50,7 @@ impl OpenaiCompatEmbed {
 #[async_trait]
 impl EmbedProvider for OpenaiCompatEmbed {
     async fn encode(&self, text: &str) -> Result<Vec<f32>> {
-        let normalized = normalize_for_embedding(text);
-        let embeddings = self.encode_batch(&[&normalized]).await?;
+        let embeddings = self.encode_batch(&[text]).await?;
         embeddings
             .into_iter()
             .next()

@@ -37,11 +37,6 @@ pub(crate) struct ZhipuRerank {
 impl ZhipuRerank {
     pub fn new(config: &ProviderConfig, client: HttpClient) -> Self {
         tracing::warn!("ZhipuRerank: 已知部分环境下分数接近常数，必要时可改用阿里云 Rerank");
-        tracing::info!(
-            "ZhipuRerank: model={}, base_url={}",
-            config.model,
-            config.base_url
-        );
         Self {
             client,
             api_key: config.api_key.clone(),

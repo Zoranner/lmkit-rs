@@ -35,12 +35,6 @@ pub(crate) struct ZhipuEmbed {
 
 impl ZhipuEmbed {
     pub fn new(config: &ProviderConfig, dimension: usize, client: HttpClient) -> Self {
-        tracing::info!(
-            "ZhipuEmbed: model={}, dimension={}, base_url={}",
-            config.model,
-            dimension,
-            config.base_url
-        );
         Self {
             client,
             api_key: config.api_key.clone(),
@@ -54,8 +48,7 @@ impl ZhipuEmbed {
 #[async_trait]
 impl EmbedProvider for ZhipuEmbed {
     async fn encode(&self, text: &str) -> Result<Vec<f32>> {
-        let normalized = normalize_for_embedding(text);
-        let embeddings = self.encode_batch(&[&normalized]).await?;
+        let embeddings = self.encode_batch(&[text]).await?;
         embeddings
             .into_iter()
             .next()

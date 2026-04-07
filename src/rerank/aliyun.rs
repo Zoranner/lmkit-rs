@@ -51,11 +51,6 @@ pub(crate) struct AliyunRerank {
 
 impl AliyunRerank {
     pub fn new(config: &ProviderConfig, client: HttpClient) -> Self {
-        tracing::info!(
-            "AliyunRerank: model={}, base_url={}",
-            config.model,
-            config.base_url
-        );
         Self {
             client,
             api_key: config.api_key.clone(),

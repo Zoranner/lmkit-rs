@@ -28,8 +28,7 @@ struct OpenaiChatCompletionsBody {
     tools: Option<Vec<OpenaiTool>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     tool_choice: Option<Value>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    temperature: Option<f32>,
+    temperature: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -117,7 +116,7 @@ impl OpenaiCompatChat {
         } else {
             None
         };
-        let temperature = request.temperature.or(Some(DEFAULT_TEMPERATURE));
+        let temperature = request.temperature.unwrap_or(DEFAULT_TEMPERATURE);
         OpenaiChatCompletionsBody {
             model: self.model.clone(),
             messages,

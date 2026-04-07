@@ -17,7 +17,9 @@
 //!
 //! 与其它模态相同：Bearer + JSON POST。
 
+#[cfg(feature = "aliyun")]
 mod aliyun;
+#[cfg(feature = "zhipu")]
 mod zhipu;
 
 use async_trait::async_trait;

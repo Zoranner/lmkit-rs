@@ -22,6 +22,7 @@
 
 #[cfg(feature = "google")]
 mod google_gemini;
+#[cfg(any(feature = "openai", feature = "aliyun", feature = "ollama"))]
 mod openai_compat;
 #[cfg(feature = "zhipu")]
 mod zhipu;

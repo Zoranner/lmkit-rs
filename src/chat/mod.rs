@@ -18,6 +18,12 @@ mod types;
 mod anthropic_compat;
 #[cfg(feature = "google")]
 mod google_gemini;
+#[cfg(any(
+    feature = "openai",
+    feature = "aliyun",
+    feature = "ollama",
+    feature = "zhipu"
+))]
 mod openai_compat;
 
 #[cfg(feature = "anthropic")]
@@ -25,6 +31,12 @@ use anthropic_compat::AnthropicCompatChat;
 use async_trait::async_trait;
 #[cfg(feature = "google")]
 use google_gemini::GoogleGeminiChat;
+#[cfg(any(
+    feature = "openai",
+    feature = "aliyun",
+    feature = "ollama",
+    feature = "zhipu"
+))]
 use openai_compat::OpenaiCompatChat;
 pub use types::{
     ChatChunk, ChatMessage, ChatRequest, ChatResponse, FinishReason, FunctionCallResult,
