@@ -45,9 +45,9 @@ Authorization: Bearer {api_key}
 - 响应为 SSE：`data:` 行为 Chat Completions **chunk** JSON，流结束为 `data: [DONE]`
 
 **chunk 映射**：
-- `choices[].delta.content` → `ChatChunk.delta`
-- `choices[].delta.tool_calls` → `ChatChunk.tool_call_deltas`（`index` / `id` / `function.name` / `function.arguments` 分片）
-- `choices[].finish_reason` → `ChatChunk.finish_reason`（`stop`/`end_turn` → `Stop`，`length` → `Length`，`content_filter` → `ContentFilter`，`tool_calls` → `ToolCalls`）
+- `choices[].delta.content` → `ChatEvent::Delta`
+- `choices[].delta.tool_calls` → `ChatEvent::ToolCallDelta`（`index` / `id` / `function.name` / `function.arguments` 分片）
+- `choices[].finish_reason` → `ChatEvent::Finish`（`stop`/`end_turn` → `Stop`，`length` → `Length`，`content_filter` → `ContentFilter`，`tool_calls` → `ToolCalls`）
 
 | 厂商 | 典型 base_url |
 |:---|:---|
@@ -87,10 +87,10 @@ anthropic-version: 2023-06-01
 - 流内 `event: error` 映射为 `Error::Api`
 
 **事件映射（摘要）**：
-- `text_delta` → `ChatChunk.delta`
-- `content_block_start`（tool_use）与 `input_json_delta` → `ChatChunk.tool_call_deltas`
-- `message_delta.stop_reason` → `ChatChunk.finish_reason`
-- `message_stop`：若 `message_delta` 已产出 `finish_reason`，则不再重复产出 `Stop`；否则映射为 `ChatChunk.finish(Stop)`
+- `text_delta` → `ChatEvent::Delta`
+- `content_block_start`（tool_use）与 `input_json_delta` → `ChatEvent::ToolCallDelta`
+- `message_delta.stop_reason` → `ChatEvent::Finish`
+- `message_stop`：若 `message_delta` 已产出 `Finish`，则不再重复产出 `Stop`；否则映射为 `ChatEvent::Finish(Stop)`
 
 **注意**：
 - `max_tokens` 来自 `ChatRequest::max_tokens` 或默认 `4096`
@@ -124,9 +124,9 @@ POST {base_url}/models/{model}:streamGenerateContent?key={api_key}
 请求体与非流式相同。响应为 SSE：`data:` 为响应片段 JSON。若某包中 `candidates` 为空且含 `promptFeedback`，返回解析错误。
 
 **chunk 解析**：
-- `parts[].text` → `ChatChunk.delta`
-- `parts[].functionCall`（`name` / `args`）→ `ChatChunk.tool_call_deltas`
-- `finishReason` → `ChatChunk.finish_reason`（映射：`STOP` 等 → `Stop` / `Length` / `ContentFilter`）；若同帧含 `functionCall` 且已带结束信号，则与非流式一致，统一为 `ToolCalls`（避免仅映射 `STOP` 与工具调用语义冲突）
+- `parts[].text` → `ChatEvent::Delta`
+- `parts[].functionCall`（`name` / `args`）→ `ChatEvent::ToolCallDelta`
+- `finishReason` → `ChatEvent::Finish`（映射：`STOP` 等 → `Stop` / `Length` / `ContentFilter`）；若同帧含 `functionCall` 且已带结束信号，则与非流式一致，统一为 `ToolCalls`（避免仅映射 `STOP` 与工具调用语义冲突）
 
 **注意**：
 - 不使用 Bearer，API Key 作为 query 参数 `key`

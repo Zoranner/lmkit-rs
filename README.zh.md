@@ -13,7 +13,7 @@
 - 🔌 **统一接口** — `ChatProvider`、`EmbedProvider` 等 trait 屏蔽厂商差异，业务代码不感知底层 API
 - 🔀 **一行切换** — 改一个 `ProviderConfig`，从 OpenAI 切到阿里云或本地 Ollama，其余代码不动
 - 📦 **按需编译** — 厂商与能力均为 Cargo feature，只引入需要的依赖，不拉多余的包
-- 🌊 **流式 + 工具调用** — 原生 SSE 流式输出，`ChatChunk` 统一携带文本 delta 与 `tool_call_deltas`
+- 🌊 **流式 + 工具调用** — 原生 SSE 流式输出，`ChatEvent` 枚举统一携带文本 delta、工具调用增量与结束原因
 - 🔍 **清晰的错误** — `ProviderDisabled` / `Unsupported` / `Api` 分级报错，排查一目了然
 
 ## 快速开始

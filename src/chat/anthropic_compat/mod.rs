@@ -15,8 +15,8 @@ use crate::error::{Error, Result};
 use crate::sse::SseEvent;
 
 use super::{
-    ChatChunk, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
-    FunctionCallResult, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
+    ChatEvent, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
+    FunctionCallResult, RequestPreset, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
 };
 
 /// Anthropic Messages 兼容实现使用的 `anthropic-version` 请求头取值。
@@ -103,7 +103,11 @@ impl AnthropicCompatChat {
             None
         };
         let max_tokens = request.max_tokens.unwrap_or(DEFAULT_MAX_TOKENS);
-        let temperature = request.temperature.unwrap_or(DEFAULT_TEMPERATURE);
+        let temperature = request.temperature.unwrap_or(match request.preset {
+            Some(RequestPreset::Planning) => 0.7,
+            Some(RequestPreset::Execution) => 0.1,
+            None => DEFAULT_TEMPERATURE,
+        });
         Ok(MessagesBody {
             model: self.model.clone(),
             max_tokens,
@@ -228,11 +232,11 @@ impl ChatProvider for AnthropicCompatChat {
             ("x-api-key", self.api_key.as_str()),
             ("anthropic-version", ANTHROPIC_VERSION),
         ];
-        let v: Value = self
+        let (request_id, v): (Option<String>, Value) = self
             .client
-            .post_json_with_headers(&url, &headers, &body, |s| s)
+            .post_json_with_headers_and_request_id(&url, &headers, &body, |s| s)
             .await?;
-        parse_anthropic_message_response(&v)
+        parse_anthropic_message_response(&v, request_id)
     }
 
     async fn complete_stream(&self, request: &ChatRequest) -> Result<ChatStream> {
@@ -253,7 +257,10 @@ impl ChatProvider for AnthropicCompatChat {
     }
 }
 
-fn parse_anthropic_message_response(body: &Value) -> Result<ChatResponse> {
+fn parse_anthropic_message_response(
+    body: &Value,
+    request_id: Option<String>,
+) -> Result<ChatResponse> {
     let content = body
         .get("content")
         .and_then(|c| c.as_array())
@@ -306,19 +313,20 @@ fn parse_anthropic_message_response(body: &Value) -> Result<ChatResponse> {
         content: text,
         tool_calls,
         finish_reason,
+        request_id,
     })
 }
 
 /// 流式解析中间结果：`message_stop` 单独标记，便于与 `message_delta` 中的 `stop_reason` 去重。
 enum AnthropicStreamParse {
-    Chunk(ChatChunk),
+    Event(ChatEvent),
     MessageStopOnly,
 }
 
 fn anthropic_stream_item_to_chunk(
     item: Result<SseEvent>,
     finish_emitted: &mut bool,
-) -> Option<Result<ChatChunk>> {
+) -> Option<Result<ChatEvent>> {
     let ev = match item {
         Err(e) => return Some(Err(e)),
         Ok(ev) => ev,
@@ -329,18 +337,18 @@ fn anthropic_stream_item_to_chunk(
         Some(Ok(p)) => p,
     };
     match inner {
-        AnthropicStreamParse::Chunk(c) => {
-            if c.finish_reason.is_some() {
+        AnthropicStreamParse::Event(e) => {
+            if matches!(e, ChatEvent::Finish(_)) {
                 *finish_emitted = true;
             }
-            Some(Ok(c))
+            Some(Ok(e))
         }
         AnthropicStreamParse::MessageStopOnly => {
             if *finish_emitted {
                 None
             } else {
                 *finish_emitted = true;
-                Some(Ok(ChatChunk::finish(FinishReason::Stop)))
+                Some(Ok(ChatEvent::Finish(FinishReason::Stop)))
             }
         }
     }
@@ -383,16 +391,14 @@ fn anthropic_parse_sse_event(ev: SseEvent) -> Option<Result<AnthropicStreamParse
                     .get("name")
                     .and_then(|x| x.as_str())
                     .map(str::to_string);
-                return Some(Ok(AnthropicStreamParse::Chunk(ChatChunk {
-                    delta: None,
-                    tool_call_deltas: Some(vec![ToolCallDelta {
+                return Some(Ok(AnthropicStreamParse::Event(ChatEvent::ToolCallDelta(
+                    vec![ToolCallDelta {
                         index,
                         id,
                         function_name: name,
                         function_arguments: None,
-                    }]),
-                    finish_reason: None,
-                })));
+                    }],
+                ))));
             }
             None
         }
@@ -400,7 +406,9 @@ fn anthropic_parse_sse_event(ev: SseEvent) -> Option<Result<AnthropicStreamParse
             let delta = v.get("delta")?;
             if delta.get("type").and_then(|t| t.as_str()) == Some("text_delta") {
                 let text = delta.get("text").and_then(|t| t.as_str())?;
-                return Some(Ok(AnthropicStreamParse::Chunk(ChatChunk::delta(text))));
+                return Some(Ok(AnthropicStreamParse::Event(ChatEvent::Delta(
+                    text.to_string(),
+                ))));
             }
             if delta.get("type").and_then(|t| t.as_str()) == Some("input_json_delta") {
                 let index = v.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as u32;
@@ -409,16 +417,14 @@ fn anthropic_parse_sse_event(ev: SseEvent) -> Option<Result<AnthropicStreamParse
                     .and_then(|p| p.as_str())
                     .unwrap_or("")
                     .to_string();
-                return Some(Ok(AnthropicStreamParse::Chunk(ChatChunk {
-                    delta: None,
-                    tool_call_deltas: Some(vec![ToolCallDelta {
+                return Some(Ok(AnthropicStreamParse::Event(ChatEvent::ToolCallDelta(
+                    vec![ToolCallDelta {
                         index,
                         id: None,
                         function_name: None,
                         function_arguments: Some(partial),
-                    }]),
-                    finish_reason: None,
-                })));
+                    }],
+                ))));
             }
             None
         }
@@ -429,11 +435,7 @@ fn anthropic_parse_sse_event(ev: SseEvent) -> Option<Result<AnthropicStreamParse
                 .and_then(|s| s.as_str());
             if let Some(r) = stop {
                 if let Some(fr) = map_anthropic_stop_reason(r) {
-                    return Some(Ok(AnthropicStreamParse::Chunk(ChatChunk {
-                        delta: None,
-                        tool_call_deltas: None,
-                        finish_reason: Some(fr),
-                    })));
+                    return Some(Ok(AnthropicStreamParse::Event(ChatEvent::Finish(fr))));
                 }
             }
             None

@@ -126,7 +126,7 @@ pub trait ChatProvider: Send + Sync {
 ```
 
 - **`complete`**：非流式补全；`ChatRequest` 含 `messages`（`ChatMessage` 多轮、`Role::Tool`）、可选 `tools` / `tool_choice`、`temperature` / `max_tokens` / `top_p`（未设 `temperature` 时默认 `0.2`）。返回 `ChatResponse`（`content`、`tool_calls`、`finish_reason`）。
-- **`complete_stream`**：同上请求形状，SSE 流式；`ChatChunk` 含 `delta`、`tool_call_deltas`、`finish_reason`。
+- **`complete_stream`**：同上请求形状，SSE 流式；每个 `ChatEvent` 携带一种语义（`Delta` / `ToolCallDelta` / `Finish`）。
 - **`chat` / `chat_stream`**：默认实现委托到 `complete` / `complete_stream`（`ChatRequest::single_user`）；仅返回文本时无 `content` 会得到 `MissingField("response content")`。
 - **`ChatMessage`**：便捷构造 `user` / `system` / `assistant` / `tool` / `tool_with_name`（多轮工具链路与 OpenAI `tool` 消息对应；Gemini 的 `functionResponse` 需要非空 `name`，请用 `tool_with_name` 或设置 `name` 字段）。
 - **`ToolDefinition`**：`ToolDefinition::function` / `function_with_description` 对应 OpenAI `tools[]` 形状。
@@ -225,12 +225,12 @@ pub trait SpeechProvider: Send + Sync {
 ### 类型定义
 
 ```rust
-pub type ChatStream = Pin<Box<dyn Stream<Item = Result<ChatChunk>> + Send>>;
+pub type ChatStream = Pin<Box<dyn Stream<Item = Result<ChatEvent>> + Send>>;
 
-pub struct ChatChunk {
-    pub delta: Option<String>,
-    pub tool_call_deltas: Option<Vec<ToolCallDelta>>,
-    pub finish_reason: Option<FinishReason>,
+pub enum ChatEvent {
+    Delta(String),
+    ToolCallDelta(Vec<ToolCallDelta>),
+    Finish(FinishReason),
 }
 
 pub struct ToolCallDelta {

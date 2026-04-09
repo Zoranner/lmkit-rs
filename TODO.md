@@ -48,7 +48,7 @@
 
 | 能力 | 状态 | 说明 |
 |:---|:---|:---|
-| Chat | ✅ | 已列厂商均支持（含非流式与流式 `chat_stream`） |
+| Chat | ✅ | 已列厂商均支持（含非流式与流式 `complete_stream`，`ChatEvent` 枚举事件模型） |
 | Embed | ✅ | Anthropic 除外 |
 | Rerank | ✅ | 仅阿里云、智谱 |
 | Image | ✅ | 仅 OpenAI、阿里云 |
@@ -58,8 +58,9 @@
 
 ## 非目标（未写入新 trait 前不承诺）
 
-- 自动重试与 429 退避
+- 自动重试与 429 退避（`is_retryable()` 已提供判断依据，策略由调用方实现）
 - 共享 `reqwest::Client` 连接池策略
 - 语音 multipart
 - 按厂商维护模型白名单
 - 发请求前按模型名本地拦截
+- Semaphore 实例化（`max_concurrent` 只携带配置值，调度由调用方负责）

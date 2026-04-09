@@ -13,8 +13,9 @@ use crate::error::{Error, Result};
 use crate::sse::SseEvent;
 
 use super::{
-    ChatChunk, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
-    FunctionCallResult, ResponseFormat, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
+    ChatEvent, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
+    FunctionCallResult, RequestPreset, ResponseFormat, Role, ToolCall, ToolCallDelta, ToolChoice,
+    ToolDefinition,
 };
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -116,7 +117,11 @@ impl OpenaiCompatChat {
         } else {
             None
         };
-        let temperature = request.temperature.unwrap_or(DEFAULT_TEMPERATURE);
+        let temperature = request.temperature.unwrap_or(match request.preset {
+            Some(RequestPreset::Planning) => 0.7,
+            Some(RequestPreset::Execution) => 0.1,
+            None => DEFAULT_TEMPERATURE,
+        });
         OpenaiChatCompletionsBody {
             model: self.model.clone(),
             messages,
@@ -200,11 +205,11 @@ impl ChatProvider for OpenaiCompatChat {
     async fn complete(&self, request: &ChatRequest) -> Result<ChatResponse> {
         let body = self.build_body(request, false);
         let url = format!("{}/chat/completions", self.base_url.trim_end_matches('/'));
-        let v: Value = self
+        let (request_id, v): (Option<String>, Value) = self
             .client
-            .post_bearer_json(&url, &self.api_key, &body, |s| s)
+            .post_bearer_json_with_request_id(&url, &self.api_key, &body, |s| s)
             .await?;
-        parse_openai_chat_response(&v)
+        parse_openai_chat_response(&v, request_id)
     }
 
     async fn complete_stream(&self, request: &ChatRequest) -> Result<ChatStream> {
@@ -220,7 +225,7 @@ impl ChatProvider for OpenaiCompatChat {
     }
 }
 
-fn parse_openai_chat_response(v: &Value) -> Result<ChatResponse> {
+fn parse_openai_chat_response(v: &Value, request_id: Option<String>) -> Result<ChatResponse> {
     let choices = v
         .get("choices")
         .and_then(|c| c.as_array())
@@ -244,6 +249,7 @@ fn parse_openai_chat_response(v: &Value) -> Result<ChatResponse> {
         content,
         tool_calls,
         finish_reason,
+        request_id,
     })
 }
 
@@ -276,14 +282,14 @@ fn parse_tool_calls_from_json(v: &Value) -> Option<Vec<ToolCall>> {
     Some(out).filter(|v| !v.is_empty())
 }
 
-fn openai_sse_item_to_chunk(item: Result<SseEvent>) -> Option<Result<ChatChunk>> {
+fn openai_sse_item_to_chunk(item: Result<SseEvent>) -> Option<Result<ChatEvent>> {
     match item {
         Err(e) => Some(Err(e)),
         Ok(ev) => openai_parse_sse_event(ev),
     }
 }
 
-fn openai_parse_sse_event(ev: SseEvent) -> Option<Result<ChatChunk>> {
+fn openai_parse_sse_event(ev: SseEvent) -> Option<Result<ChatEvent>> {
     let data = ev.data.trim();
     if data.is_empty() || data == "[DONE]" {
         return None;
@@ -304,14 +310,16 @@ fn openai_parse_sse_event(ev: SseEvent) -> Option<Result<ChatChunk>> {
         .get("finish_reason")
         .and_then(|f| f.as_str())
         .and_then(map_openai_finish_reason);
-    if delta_text.is_none() && tool_call_deltas.is_none() && finish_reason.is_none() {
-        return None;
+    if let Some(text) = delta_text {
+        return Some(Ok(ChatEvent::Delta(text)));
     }
-    Some(Ok(ChatChunk {
-        delta: delta_text,
-        tool_call_deltas,
-        finish_reason,
-    }))
+    if let Some(deltas) = tool_call_deltas {
+        return Some(Ok(ChatEvent::ToolCallDelta(deltas)));
+    }
+    if let Some(reason) = finish_reason {
+        return Some(Ok(ChatEvent::Finish(reason)));
+    }
+    None
 }
 
 fn parse_delta_tool_calls(v: &Value) -> Option<Vec<ToolCallDelta>> {

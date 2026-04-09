@@ -39,8 +39,9 @@ use google_gemini::GoogleGeminiChat;
 ))]
 use openai_compat::OpenaiCompatChat;
 pub use types::{
-    ChatChunk, ChatMessage, ChatRequest, ChatResponse, FinishReason, FunctionCallResult,
-    FunctionDefinition, ResponseFormat, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
+    ChatEvent, ChatMessage, ChatRequest, ChatResponse, FinishReason, FunctionCallResult,
+    FunctionDefinition, RequestPreset, ResponseFormat, Role, ToolCall, ToolCallDelta, ToolChoice,
+    ToolDefinition,
 };
 
 use std::pin::Pin;
@@ -51,8 +52,8 @@ use crate::config::Provider;
 use crate::config::ProviderConfig;
 use crate::error::{Error, Result};
 
-/// 流式对话：每项为 [`Result<ChatChunk>`](crate::error::Result)。
-pub type ChatStream = Pin<Box<dyn Stream<Item = Result<ChatChunk>> + Send>>;
+/// 流式对话：每项为 [`Result<ChatEvent>`](crate::error::Result)。
+pub type ChatStream = Pin<Box<dyn Stream<Item = Result<ChatEvent>> + Send>>;
 
 #[async_trait]
 pub trait ChatProvider: Send + Sync {
@@ -111,4 +112,37 @@ pub(crate) fn create(config: &ProviderConfig) -> Result<Box<dyn ChatProvider>> {
         #[cfg(not(feature = "zhipu"))]
         Provider::Zhipu => Err(crate::error::Error::ProviderDisabled("zhipu".to_string())),
     }
+}
+
+/// 将流式 [`ToolCallDelta`] 序列合并为完整 [`ToolCall`] 列表。
+///
+/// 按 `index` 分组，将同一 index 的 `id`、`function_name`、`function_arguments` 片段拼接。
+/// 结果按 `index` 升序排列，跳过 `function_name` 为空的条目。
+pub fn merge_tool_call_deltas(deltas: &[ToolCallDelta]) -> Vec<ToolCall> {
+    use std::collections::BTreeMap;
+    let mut map: BTreeMap<u32, (Option<String>, Option<String>, String)> = BTreeMap::new();
+    for d in deltas {
+        let entry = map.entry(d.index).or_insert((None, None, String::new()));
+        if entry.0.is_none() {
+            entry.0 = d.id.clone();
+        }
+        if entry.1.is_none() {
+            entry.1 = d.function_name.clone();
+        }
+        if let Some(args) = &d.function_arguments {
+            entry.2.push_str(args);
+        }
+    }
+    map.into_values()
+        .filter_map(|(id, name, args)| {
+            let name = name?;
+            Some(ToolCall {
+                id: id.unwrap_or_else(|| format!("tool_call_{}", name)),
+                function: crate::chat::FunctionCallResult {
+                    name,
+                    arguments: args,
+                },
+            })
+        })
+        .collect()
 }

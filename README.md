@@ -13,7 +13,7 @@ A unified Rust client for OpenAI, Anthropic, Google Gemini, Aliyun, Ollama, and 
 - 🔌 **Unified interface** — `ChatProvider`, `EmbedProvider` and friends abstract away provider differences; your code never talks to raw HTTP
 - 🔀 **One-line switching** — swap `ProviderConfig` to move from OpenAI to Aliyun or a local Ollama, zero other changes
 - 📦 **Compile only what you need** — providers and modalities are Cargo features; unused ones add zero dependencies
-- 🌊 **Streaming + tool calls** — native SSE streaming; `ChatChunk` carries both text `delta` and `tool_call_deltas` in one unified type
+- 🌊 **Streaming + tool calls** — native SSE streaming; `ChatEvent` enum carries text delta, tool call deltas, and finish reason as distinct variants
 - 🔍 **Precise errors** — `ProviderDisabled` / `Unsupported` / `Api` tell you exactly what went wrong and where
 
 ## Quick Start

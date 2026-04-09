@@ -14,8 +14,8 @@ use crate::error::{Error, Result};
 use crate::sse::SseEvent;
 
 use super::{
-    ChatChunk, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
-    FunctionCallResult, Role, ToolCall, ToolCallDelta, ToolChoice,
+    ChatEvent, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
+    FunctionCallResult, RequestPreset, Role, ToolCall, ToolCallDelta, ToolChoice,
 };
 
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
@@ -48,7 +48,11 @@ impl GoogleGeminiChat {
         }
         let (system_instruction, contents) = gemini_contents_from_chat(request)?;
         let mut generation_config = json!({
-            "temperature": request.temperature.unwrap_or(DEFAULT_TEMPERATURE),
+            "temperature": request.temperature.unwrap_or(match request.preset {
+                Some(RequestPreset::Planning) => 0.7,
+                Some(RequestPreset::Execution) => 0.1,
+                None => DEFAULT_TEMPERATURE,
+            }),
         });
         if let Some(m) = request.max_tokens {
             generation_config["maxOutputTokens"] = json!(m);
@@ -186,7 +190,7 @@ fn tool_message_to_gemini_response(m: &ChatMessage) -> Result<Value> {
     serde_json::from_str(raw).or_else(|_| Ok(json!({ "result": raw })))
 }
 
-fn parse_gemini_generate_response(v: &Value) -> Result<ChatResponse> {
+fn parse_gemini_generate_response(v: &Value, request_id: Option<String>) -> Result<ChatResponse> {
     let candidates = v
         .get("candidates")
         .and_then(|c| c.as_array())
@@ -243,6 +247,7 @@ fn parse_gemini_generate_response(v: &Value) -> Result<ChatResponse> {
             Some(tool_calls)
         },
         finish_reason,
+        request_id,
     })
 }
 
@@ -253,11 +258,11 @@ impl ChatProvider for GoogleGeminiChat {
         let base = self.base_url.trim_end_matches('/');
         let url = format!("{}/models/{}:generateContent", base, self.model);
         let query = [("key", self.api_key.as_str())];
-        let v: Value = self
+        let (request_id, v): (Option<String>, Value) = self
             .client
-            .post_json_query(&url, &query, &body, |s| s)
+            .post_json_query_with_request_id(&url, &query, &body, |s| s)
             .await?;
-        parse_gemini_generate_response(&v)
+        parse_gemini_generate_response(&v, request_id)
     }
 
     async fn complete_stream(&self, request: &ChatRequest) -> Result<ChatStream> {
@@ -275,14 +280,14 @@ impl ChatProvider for GoogleGeminiChat {
     }
 }
 
-fn google_sse_item_to_chunk(item: Result<SseEvent>) -> Option<Result<ChatChunk>> {
+fn google_sse_item_to_chunk(item: Result<SseEvent>) -> Option<Result<ChatEvent>> {
     match item {
         Err(e) => Some(Err(e)),
         Ok(ev) => google_parse_sse_event(ev),
     }
 }
 
-fn google_parse_sse_event(ev: SseEvent) -> Option<Result<ChatChunk>> {
+fn google_parse_sse_event(ev: SseEvent) -> Option<Result<ChatEvent>> {
     let data = ev.data.trim();
     if data.is_empty() {
         return None;
@@ -345,22 +350,18 @@ fn google_parse_sse_event(ev: SseEvent) -> Option<Result<ChatChunk>> {
         finish
     };
 
-    if text.is_empty() && tool_deltas.is_empty() && finish_reason.is_none() {
-        return None;
+    // 优先返回工具调用增量，其次文本，最后结束原因。
+    // Gemini 一帧可能同时含多种内容，枚举事件模型每次只携带一种语义。
+    if !tool_deltas.is_empty() {
+        return Some(Ok(ChatEvent::ToolCallDelta(tool_deltas)));
     }
-
-    let delta = if text.is_empty() { None } else { Some(text) };
-    let tool_call_deltas = if tool_deltas.is_empty() {
-        None
-    } else {
-        Some(tool_deltas)
-    };
-
-    Some(Ok(ChatChunk {
-        delta,
-        tool_call_deltas,
-        finish_reason,
-    }))
+    if !text.is_empty() {
+        return Some(Ok(ChatEvent::Delta(text)));
+    }
+    if let Some(reason) = finish_reason {
+        return Some(Ok(ChatEvent::Finish(reason)));
+    }
+    None
 }
 
 fn map_gemini_finish_reason(s: &str) -> Option<FinishReason> {

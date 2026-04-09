@@ -129,13 +129,16 @@ crate 根重导出的稳定面：
 
 ### 统一抽象
 
-各厂商 SSE 响应映射为统一的 `ChatChunk`：
+各厂商 SSE 响应映射为统一的 `ChatEvent` 枚举：
 
 ```rust
-pub struct ChatChunk {
-    pub delta: Option<String>,
-    pub tool_call_deltas: Option<Vec<ToolCallDelta>>,
-    pub finish_reason: Option<FinishReason>,
+pub enum ChatEvent {
+    /// 文本增量。
+    Delta(String),
+    /// 工具调用增量（按 index 合并，见 `merge_tool_call_deltas`）。
+    ToolCallDelta(Vec<ToolCallDelta>),
+    /// 流结束原因（通常是最后一个事件）。
+    Finish(FinishReason),
 }
 
 pub enum FinishReason {
@@ -145,6 +148,12 @@ pub enum FinishReason {
     ToolCalls,
 }
 ```
+
+每个事件只携带一种语义，消除了原扁平结构中三字段均可为 `None` 的歧义。
+
+### 工具调用增量合并
+
+`merge_tool_call_deltas(deltas: &[ToolCallDelta]) -> Vec<ToolCall>` 将流式增量按 `index` 分组合并为完整 `ToolCall` 列表，减少调用方样板代码。
 
 ### 厂商差异
 
@@ -175,6 +184,33 @@ pub enum FinishReason {
 | HTTP 非 2xx | `Api` | 状态码 + 响应体信息 |
 | JSON 结构不符 | `Parse` | 解析失败说明 |
 | 响应缺字段 | `MissingField` | 缺失字段名 |
+
+### 错误分类方法
+
+`Error` 提供两个辅助方法，供调用方实现重试策略：
+
+- `is_retryable() -> bool`：HTTP 429 / 5xx 及网络层错误返回 `true`，可安全重试（幂等前提下）。
+- `requires_human() -> bool`：HTTP 401 / 403 / 404 返回 `true`，需要人工介入（鉴权失败、资源不存在等）。
+
+重试次数、退避策略由调用方（如 Docwise 应用层）决定，本库不内置重试逻辑。
+
+---
+
+## 可观测性
+
+### request_id
+
+`ChatResponse` 包含 `request_id: Option<String>`，从响应头提取：
+
+| 厂商 | 响应头 |
+|:---|:---|
+| OpenAI 兼容 | `x-request-id` |
+| Anthropic | `request-id` |
+| Google Gemini | 无标准头，始终为 `None` |
+
+### 并发上限
+
+`ProviderConfig` 包含 `max_concurrent: Option<usize>`，携带调用方期望的 provider 级并发上限提示。本库不持有 Semaphore，由调用方按此值自行限流。
 
 ---
 

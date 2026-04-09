@@ -61,42 +61,6 @@ impl HttpClient {
         serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))
     }
 
-    /// POST JSON，自定义请求头（不含 `Content-Type`，本方法会设置 `application/json`）。
-    #[cfg(feature = "anthropic")]
-    pub async fn post_json_with_headers<Req, Resp, F>(
-        &self,
-        url: &str,
-        headers: &[(&str, &str)],
-        body: &Req,
-        map_err_body: F,
-    ) -> Result<Resp>
-    where
-        Req: Serialize + ?Sized,
-        Resp: DeserializeOwned,
-        F: FnOnce(String) -> String,
-    {
-        let mut req = self
-            .inner
-            .post(url)
-            .header("Content-Type", "application/json");
-        for (name, value) in headers {
-            req = req.header(*name, *value);
-        }
-        let response = req.json(body).send().await?;
-
-        let status = response.status();
-        let body_text = response.text().await?;
-
-        if !status.is_success() {
-            return Err(Error::Api {
-                status: status.as_u16(),
-                message: map_err_body(body_text),
-            });
-        }
-
-        serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))
-    }
-
     /// POST JSON，URL query 参数（如 `key`），无 `Authorization` 头；本方法会设置 `Content-Type: application/json`。
     #[cfg(feature = "google")]
     pub async fn post_json_query<Req, Resp, F>(
@@ -133,7 +97,131 @@ impl HttpClient {
         serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))
     }
 
-    /// POST JSON + Bearer，成功时返回 SSE 事件流（`Accept: text/event-stream`）。
+    /// POST JSON，`Authorization: Bearer {token}`，同时返回响应头中的 `x-request-id`。
+    pub async fn post_bearer_json_with_request_id<Req, Resp, F>(
+        &self,
+        url: &str,
+        bearer_token: &str,
+        body: &Req,
+        map_err_body: F,
+    ) -> Result<(Option<String>, Resp)>
+    where
+        Req: Serialize + ?Sized,
+        Resp: DeserializeOwned,
+        F: FnOnce(String) -> String,
+    {
+        let response = self
+            .inner
+            .post(url)
+            .header("Authorization", format!("Bearer {}", bearer_token))
+            .header("Content-Type", "application/json")
+            .json(body)
+            .send()
+            .await?;
+
+        let request_id = response
+            .headers()
+            .get("x-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
+        let status = response.status();
+        let body_text = response.text().await?;
+
+        if !status.is_success() {
+            return Err(Error::Api {
+                status: status.as_u16(),
+                message: map_err_body(body_text),
+            });
+        }
+
+        let resp = serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))?;
+        Ok((request_id, resp))
+    }
+
+    /// POST JSON，自定义请求头，同时返回响应头中的 `request-id`（Anthropic 风格）。
+    #[cfg(feature = "anthropic")]
+    pub async fn post_json_with_headers_and_request_id<Req, Resp, F>(
+        &self,
+        url: &str,
+        headers: &[(&str, &str)],
+        body: &Req,
+        map_err_body: F,
+    ) -> Result<(Option<String>, Resp)>
+    where
+        Req: Serialize + ?Sized,
+        Resp: DeserializeOwned,
+        F: FnOnce(String) -> String,
+    {
+        let mut req = self
+            .inner
+            .post(url)
+            .header("Content-Type", "application/json");
+        for (name, value) in headers {
+            req = req.header(*name, *value);
+        }
+        let response = req.json(body).send().await?;
+
+        let request_id = response
+            .headers()
+            .get("request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
+        let status = response.status();
+        let body_text = response.text().await?;
+
+        if !status.is_success() {
+            return Err(Error::Api {
+                status: status.as_u16(),
+                message: map_err_body(body_text),
+            });
+        }
+
+        let resp = serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))?;
+        Ok((request_id, resp))
+    }
+
+    /// POST JSON，URL query 参数，同时返回响应头中的 `x-request-id`（Google 无标准头，通常为 `None`）。
+    #[cfg(feature = "google")]
+    pub async fn post_json_query_with_request_id<Req, Resp, F>(
+        &self,
+        url: &str,
+        query: &[(&str, &str)],
+        body: &Req,
+        map_err_body: F,
+    ) -> Result<(Option<String>, Resp)>
+    where
+        Req: Serialize + ?Sized,
+        Resp: DeserializeOwned,
+        F: FnOnce(String) -> String,
+    {
+        let response = self
+            .inner
+            .post(url)
+            .query(query)
+            .header("Content-Type", "application/json")
+            .json(body)
+            .send()
+            .await?;
+
+        let request_id = response
+            .headers()
+            .get("x-request-id")
+            .and_then(|v| v.to_str().ok())
+            .map(str::to_string);
+        let status = response.status();
+        let body_text = response.text().await?;
+
+        if !status.is_success() {
+            return Err(Error::Api {
+                status: status.as_u16(),
+                message: map_err_body(body_text),
+            });
+        }
+
+        let resp = serde_json::from_str(&body_text).map_err(|e| Error::Parse(e.to_string()))?;
+        Ok((request_id, resp))
+    }
+
     pub async fn post_bearer_sse<Req, F>(
         &self,
         url: &str,
@@ -368,8 +456,8 @@ mod tests {
         let client = HttpClient::new(Duration::from_secs(5)).unwrap();
         let url = format!("{}/m", server.uri());
         let headers = [("x-api-key", "secret"), ("anthropic-version", "2023-06-01")];
-        let out: EchoResp = client
-            .post_json_with_headers(&url, &headers, &EchoReq { n: 7 }, |s| s)
+        let (_request_id, out): (_, EchoResp) = client
+            .post_json_with_headers_and_request_id(&url, &headers, &EchoReq { n: 7 }, |s| s)
             .await
             .unwrap();
         assert_eq!(out.msg, "ok");
@@ -388,7 +476,7 @@ mod tests {
         let client = HttpClient::new(Duration::from_secs(5)).unwrap();
         let url = format!("{}/m", server.uri());
         let err = client
-            .post_json_with_headers::<EchoReq, EchoResp, _>(
+            .post_json_with_headers_and_request_id::<EchoReq, EchoResp, _>(
                 &url,
                 &[("x-api-key", "k")],
                 &EchoReq { n: 1 },

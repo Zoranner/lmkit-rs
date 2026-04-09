@@ -57,6 +57,8 @@ pub struct ProviderConfig {
     pub dimension: Option<usize>,
     /// 覆盖该次请求使用的 HTTP 超时；`None` 表示由各模态默认值决定
     pub timeout: Option<Duration>,
+    /// 调用方期望的 provider 级并发上限提示；本库不持有 Semaphore，由调用方（如 Docwise 应用层）按此值自行限流。
+    pub max_concurrent: Option<usize>,
 }
 
 impl ProviderConfig {
@@ -73,6 +75,7 @@ impl ProviderConfig {
             model: model.into(),
             dimension: None,
             timeout: None,
+            max_concurrent: None,
         }
     }
 }

@@ -8,13 +8,26 @@
 
 ## [Unreleased]
 
+### 新增
+
+- **`ChatEvent` 枚举** — 替代原扁平 `ChatChunk` 结构体，流式事件现为 `Delta(String)` / `ToolCallDelta(Vec<ToolCallDelta>)` / `Finish(FinishReason)` 三个变体，消除三字段均可为 `None` 的歧义。
+- **`merge_tool_call_deltas`** — 将流式 `ToolCallDelta` 按 `index` 合并为完整 `ToolCall` 列表的工具函数。
+- **`ChatResponse::request_id`** — 从响应头提取 request ID（OpenAI 兼容：`x-request-id`；Anthropic：`request-id`；Gemini：始终 `None`）。
+- **`ProviderConfig::max_concurrent`** — 携带调用方期望的 provider 级并发上限提示（调度由调用方负责）。
+- **`Error::is_retryable()` / `requires_human()`** — 错误分类辅助方法，供调用方实现重试策略。
+- **`ChatRequest::preset`** — `RequestPreset` 枚举（`Planning` / `Execution`），未显式设置 `temperature` 时按 preset 选取默认值。
+
+### 破坏性变更
+
+- `ChatStream` 的 item 类型从 `Result<ChatChunk>` 改为 `Result<ChatEvent>`，调用方需更新 match 逻辑。
+
 ---
 
 ## [0.1.0] - 2026-03-22
 
 ### 新增
 
-- **Chat 流式** — `ChatProvider::chat_stream` 返回 `ChatStream`，每项为 `ChatChunk`（`delta` + `finish_reason`）。OpenAI 兼容（OpenAI、阿里云、Ollama、智谱）、Anthropic Messages、Google Gemini `streamGenerateContent` 均支持 SSE。示例见 `examples/stream_chat.rs`。
+- **Chat 流式** — `ChatProvider::chat_stream` 返回 `ChatStream`，每项为 `ChatEvent`（`Delta` / `ToolCallDelta` / `Finish`）。OpenAI 兼容（OpenAI、阿里云、Ollama、智谱）、Anthropic Messages、Google Gemini `streamGenerateContent` 均支持 SSE。示例见 `examples/stream_chat.rs`。
 - **Google Gemini Chat** — 新增 `google` feature 和 `Provider::Google`。实现 `generateContent` 端点（API Key 作为 query 参数 `key`）。若 HTTP 200 但 `candidates` 为空，返回含 `promptFeedback` 摘要的解析错误。
 - **Google Gemini Embed** — 实现 `embedContent`（单条）和 `batchEmbedContents`（批量）。
 - **Anthropic Chat** — 新增 `anthropic` feature 和 `Provider::Anthropic`。实现 Messages 兼容端点（`x-api-key` + `anthropic-version` 头），支持官方及兼容网关。

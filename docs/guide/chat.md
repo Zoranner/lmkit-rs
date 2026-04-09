@@ -118,7 +118,7 @@ println!("{}", response2.content.unwrap_or_default());
 
 ## 流式对话
 
-`complete_stream` 返回 `ChatStream`（`Pin<Box<dyn Stream<Item = Result<ChatChunk>> + Send>>`），需要 `futures::StreamExt` 驱动：
+`complete_stream` 返回 `ChatStream`（`Pin<Box<dyn Stream<Item = Result<ChatEvent>> + Send>>`），需要 `futures::StreamExt` 驱动：
 
 ```toml
 [dependencies]
@@ -127,40 +127,34 @@ futures = "0.3"
 
 ```rust
 use futures::StreamExt;
-use lmkit::{ChatRequest, FinishReason};
+use lmkit::{ChatEvent, ChatRequest, FinishReason};
 
 let mut stream = chat
     .complete_stream(&ChatRequest::single_user("写一首关于 Rust 的俳句"))
     .await?;
 
 while let Some(item) = stream.next().await {
-    let chunk = item?;
-
-    // 文本增量
-    if let Some(text) = chunk.delta {
-        print!("{text}");
-    }
-
-    // 结束原因
-    if let Some(reason) = chunk.finish_reason {
-        match reason {
+    match item? {
+        ChatEvent::Delta(text) => print!("{text}"),
+        ChatEvent::ToolCallDelta(deltas) => { /* 见工具调用章节 */ }
+        ChatEvent::Finish(reason) => match reason {
             FinishReason::Stop => eprintln!("\n[完成]"),
             FinishReason::Length => eprintln!("\n[超出 max_tokens]"),
             FinishReason::ToolCalls => eprintln!("\n[触发工具调用]"),
             FinishReason::ContentFilter => eprintln!("\n[内容过滤]"),
-        }
+        },
     }
 }
 println!();
 ```
 
-### ChatChunk 字段
+### ChatEvent 变体
 
-| 字段 | 类型 | 说明 |
+| 变体 | 携带数据 | 说明 |
 |:---|:---|:---|
-| `delta` | `Option<String>` | 文本增量 |
-| `tool_call_deltas` | `Option<Vec<ToolCallDelta>>` | 工具调用增量（见[工具调用](tool-calling.md)） |
-| `finish_reason` | `Option<FinishReason>` | 结束原因，仅最后一个 chunk 含此字段 |
+| `Delta(String)` | 文本增量 | 每个文本片段一个事件 |
+| `ToolCallDelta(Vec<ToolCallDelta>)` | 工具调用增量 | 见[工具调用](tool-calling.md) |
+| `Finish(FinishReason)` | 结束原因 | 通常是流的最后一个事件 |
 
 ---
 

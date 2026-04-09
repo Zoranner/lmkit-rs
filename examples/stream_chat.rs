@@ -6,7 +6,7 @@
 //! ```
 
 use futures::StreamExt;
-use lmkit::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
+use lmkit::{create_chat_provider, ChatEvent, ChatRequest, Provider, ProviderConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -26,15 +26,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .complete_stream(&ChatRequest::single_user(prompt))
         .await?;
     while let Some(item) = stream.next().await {
-        let chunk = item?;
-        if let Some(t) = chunk.delta {
-            print!("{t}");
-        }
-        if let Some(td) = chunk.tool_call_deltas {
-            eprintln!("\n[tool_call_deltas: {td:?}]");
-        }
-        if let Some(r) = chunk.finish_reason {
-            eprintln!("\n[finish: {r:?}]");
+        match item? {
+            ChatEvent::Delta(text) => print!("{text}"),
+            ChatEvent::ToolCallDelta(deltas) => eprintln!("\n[tool_call_deltas: {deltas:?}]"),
+            ChatEvent::Finish(reason) => eprintln!("\n[finish: {reason:?}]"),
         }
     }
     println!();

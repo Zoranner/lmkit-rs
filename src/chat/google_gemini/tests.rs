@@ -1,5 +1,5 @@
 use super::*;
-use crate::chat::{ChatChunk, ToolChoice, ToolDefinition};
+use crate::chat::{ChatEvent, ToolChoice, ToolDefinition};
 use crate::config::Provider;
 use crate::error::Error;
 use futures::StreamExt;
@@ -255,7 +255,7 @@ async fn stream_generate_content_yields_text_chunk() {
     let chat = GoogleGeminiChat::new(&test_config(&server)).unwrap();
     let mut stream = chat.chat_stream("hello").await.unwrap();
     let chunk = stream.next().await.unwrap().unwrap();
-    assert_eq!(chunk, ChatChunk::delta("Hi"));
+    assert_eq!(chunk, ChatEvent::Delta("Hi".to_string()));
     assert!(stream.next().await.is_none());
 }
 
@@ -288,8 +288,9 @@ async fn stream_maps_finish_reason_tool_calls_when_function_call_with_stop() {
         .await
         .unwrap();
     let chunk = stream.next().await.unwrap().unwrap();
-    assert!(chunk.tool_call_deltas.is_some());
-    assert_eq!(chunk.finish_reason, Some(FinishReason::ToolCalls));
+    let ChatEvent::ToolCallDelta(_) = chunk else {
+        panic!("expected ToolCallDelta, got {:?}", chunk);
+    };
 }
 
 #[tokio::test]
@@ -316,8 +317,9 @@ async fn stream_yields_function_call_delta() {
         .await
         .unwrap();
     let chunk = stream.next().await.unwrap().unwrap();
-    assert!(chunk.tool_call_deltas.is_some());
-    let d = &chunk.tool_call_deltas.as_ref().unwrap()[0];
-    assert_eq!(d.function_name.as_deref(), Some("fn"));
-    assert!(d.function_arguments.as_ref().unwrap().contains("1"));
+    let ChatEvent::ToolCallDelta(ref deltas) = chunk else {
+        panic!("expected ToolCallDelta, got {:?}", chunk);
+    };
+    assert_eq!(deltas[0].function_name.as_deref(), Some("fn"));
+    assert!(deltas[0].function_arguments.as_ref().unwrap().contains("1"));
 }

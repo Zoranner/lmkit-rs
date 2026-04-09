@@ -165,18 +165,29 @@ pub enum ToolChoice {
     Tool(String),
 }
 
+/// 调用场景预设，影响 `temperature` 的默认值（仅当 [`ChatRequest::temperature`] 为 `None` 时生效）。
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RequestPreset {
+    /// 规划类调用：较高 temperature（0.7），鼓励多样性与创造性。
+    Planning,
+    /// 执行类调用：较低 temperature（0.1），追求确定性与一致性。
+    Execution,
+}
+
 /// 一次补全请求（非流式 / 流式共用，流式由实现加 `stream: true`）。
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ChatRequest {
     pub messages: Vec<ChatMessage>,
     pub tools: Option<Vec<ToolDefinition>>,
     pub tool_choice: Option<ToolChoice>,
-    /// `None` → 实现默认 `0.2`（与历史行为一致）。
+    /// `None` → 由 [`RequestPreset`] 决定，或实现默认 `0.2`。
     pub temperature: Option<f32>,
     pub max_tokens: Option<u32>,
     pub top_p: Option<f32>,
     /// 输出格式约束；仅 OpenAI 兼容路径序列化，Anthropic / Google 路径忽略（见 [`ResponseFormat`]）。
     pub response_format: Option<ResponseFormat>,
+    /// 调用场景预设；仅在 `temperature` 为 `None` 时影响默认值。
+    pub preset: Option<RequestPreset>,
 }
 
 impl ChatRequest {
@@ -195,6 +206,8 @@ pub struct ChatResponse {
     pub content: Option<String>,
     pub tool_calls: Option<Vec<ToolCall>>,
     pub finish_reason: Option<FinishReason>,
+    /// 上游响应头中的请求 ID（OpenAI: `x-request-id`，Anthropic: `request-id`）；厂商未返回时为 `None`。
+    pub request_id: Option<String>,
 }
 
 /// 完整工具调用（assistant 消息或非流式响应）。
@@ -219,15 +232,17 @@ pub enum FinishReason {
     ToolCalls,
 }
 
-/// 流式响应中的单个片段：文本增量、工具调用增量、可选结束原因。
+/// 流式 Chat 事件（替代原扁平 `ChatChunk`）。
+///
+/// 每个事件只携带一种语义，消除了原结构中三字段均可为 `None` 的歧义。
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ChatChunk {
-    /// 本轮增量文本；首包或仅含工具增量时可能为 `None`。
-    pub delta: Option<String>,
-    /// OpenAI `delta.tool_calls` 或 Anthropic `input_json_delta` 等映射而来。
-    pub tool_call_deltas: Option<Vec<ToolCallDelta>>,
-    /// 仅在流末尾或上游标明停止原因时出现。
-    pub finish_reason: Option<FinishReason>,
+pub enum ChatEvent {
+    /// 文本增量。
+    Delta(String),
+    /// 工具调用增量（按 `index` 合并多条 delta，见 [`merge_tool_call_deltas`](super::merge_tool_call_deltas)）。
+    ToolCallDelta(Vec<ToolCallDelta>),
+    /// 流结束原因（通常是最后一个事件）。
+    Finish(FinishReason),
 }
 
 /// 流式工具调用增量（按 `index` 合并多条 delta）。
@@ -237,33 +252,4 @@ pub struct ToolCallDelta {
     pub id: Option<String>,
     pub function_name: Option<String>,
     pub function_arguments: Option<String>,
-}
-
-impl ChatChunk {
-    /// 仅文本增量。
-    pub fn delta(text: impl Into<String>) -> Self {
-        Self {
-            delta: Some(text.into()),
-            tool_call_deltas: None,
-            finish_reason: None,
-        }
-    }
-
-    /// 仅结束原因（常见于最后一包 `delta` 无 `content`）。
-    pub fn finish(reason: FinishReason) -> Self {
-        Self {
-            delta: None,
-            tool_call_deltas: None,
-            finish_reason: Some(reason),
-        }
-    }
-
-    /// 仅工具调用增量。
-    pub fn tool_deltas(deltas: Vec<ToolCallDelta>) -> Self {
-        Self {
-            delta: None,
-            tool_call_deltas: Some(deltas),
-            finish_reason: None,
-        }
-    }
 }

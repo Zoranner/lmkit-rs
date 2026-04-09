@@ -46,9 +46,9 @@ pub use error::{Error, Result};
 pub use audio::{AudioFormat, SpeechProvider, TranscriptionProvider};
 #[cfg(feature = "chat")]
 pub use chat::{
-    ChatChunk, ChatMessage, ChatProvider, ChatRequest, ChatResponse, ChatStream, FinishReason,
-    FunctionCallResult, FunctionDefinition, ResponseFormat, Role, ToolCall, ToolCallDelta,
-    ToolChoice, ToolDefinition,
+    merge_tool_call_deltas, ChatEvent, ChatMessage, ChatProvider, ChatRequest, ChatResponse,
+    ChatStream, FinishReason, FunctionCallResult, FunctionDefinition, RequestPreset,
+    ResponseFormat, Role, ToolCall, ToolCallDelta, ToolChoice, ToolDefinition,
 };
 #[cfg(feature = "embed")]
 pub use embed::EmbedProvider;

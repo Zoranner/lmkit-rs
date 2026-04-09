@@ -1,5 +1,5 @@
 use super::*;
-use crate::chat::{ChatChunk, FinishReason, ResponseFormat, ToolChoice, ToolDefinition};
+use crate::chat::{ChatEvent, FinishReason, ResponseFormat, ToolChoice, ToolDefinition};
 use crate::config::Provider;
 use futures::StreamExt;
 use wiremock::matchers::{body_json, header, method, path};
@@ -230,20 +230,15 @@ async fn messages_stream_tool_use_deltas() {
         chunks.push(item.unwrap());
     }
     assert_eq!(chunks.len(), 3);
-    assert!(chunks[0].tool_call_deltas.is_some());
-    assert_eq!(
-        chunks[0].tool_call_deltas.as_ref().unwrap()[0]
-            .id
-            .as_deref(),
-        Some("tu_1")
-    );
-    assert_eq!(
-        chunks[1].tool_call_deltas.as_ref().unwrap()[0]
-            .function_arguments
-            .as_deref(),
-        Some("{\"a\":1}")
-    );
-    assert_eq!(chunks[2].finish_reason, Some(FinishReason::ToolCalls));
+    let ChatEvent::ToolCallDelta(ref deltas0) = chunks[0] else {
+        panic!("expected ToolCallDelta, got {:?}", chunks[0]);
+    };
+    assert_eq!(deltas0[0].id.as_deref(), Some("tu_1"));
+    let ChatEvent::ToolCallDelta(ref deltas1) = chunks[1] else {
+        panic!("expected ToolCallDelta, got {:?}", chunks[1]);
+    };
+    assert_eq!(deltas1[0].function_arguments.as_deref(), Some("{\"a\":1}"));
+    assert_eq!(chunks[2], ChatEvent::Finish(FinishReason::ToolCalls));
 }
 
 #[tokio::test]
@@ -339,8 +334,8 @@ async fn messages_stream_yields_text_delta_and_stop() {
         chunks.push(item.unwrap());
     }
     assert_eq!(chunks.len(), 2);
-    assert_eq!(chunks[0], ChatChunk::delta("Hi"));
-    assert_eq!(chunks[1], ChatChunk::finish(FinishReason::Stop));
+    assert_eq!(chunks[0], ChatEvent::Delta("Hi".to_string()));
+    assert_eq!(chunks[1], ChatEvent::Finish(FinishReason::Stop));
 }
 
 #[test]

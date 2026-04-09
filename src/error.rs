@@ -41,4 +41,30 @@ pub enum Error {
     MissingField(&'static str),
 }
 
+impl Error {
+    /// 是否属于可安全重试的错误（幂等前提下）。
+    ///
+    /// 以下情况返回 `true`：
+    /// - HTTP 429 Too Many Requests
+    /// - HTTP 5xx 服务端错误
+    /// - `reqwest` 网络层错误（连接超时、连接重置等）
+    pub fn is_retryable(&self) -> bool {
+        match self {
+            Error::Api { status, .. } => *status == 429 || *status >= 500,
+            Error::Http(_) => true,
+            _ => false,
+        }
+    }
+
+    /// 是否需要人工介入（鉴权失败、权限不足、资源不存在等）。
+    ///
+    /// 以下情况返回 `true`：
+    /// - HTTP 401 Unauthorized
+    /// - HTTP 403 Forbidden
+    /// - HTTP 404 Not Found
+    pub fn requires_human(&self) -> bool {
+        matches!(self, Error::Api { status, .. } if matches!(status, 401 | 403 | 404))
+    }
+}
+
 pub type Result<T> = std::result::Result<T, Error>;
