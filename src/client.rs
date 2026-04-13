@@ -27,6 +27,7 @@ impl HttpClient {
     }
 
     /// POST JSON，`Authorization: Bearer {token}`。非 2xx 时用 `map_err_body` 处理响应体文案。
+    #[cfg(any(test, feature = "embed", feature = "rerank", feature = "image"))]
     pub async fn post_bearer_json<Req, Resp, F>(
         &self,
         url: &str,

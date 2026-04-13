@@ -1,5 +1,6 @@
 //! 小工具函数
 
+#[cfg(any(test, feature = "embed"))]
 pub(crate) fn normalize_for_embedding(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
 }
