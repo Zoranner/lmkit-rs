@@ -25,6 +25,7 @@
 mod client;
 mod config;
 mod error;
+#[cfg(feature = "chat")]
 mod sse;
 mod util;
 

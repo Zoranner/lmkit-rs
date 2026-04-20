@@ -2,17 +2,21 @@
 //!
 //! SSE 流式响应见 [`HttpClient::post_bearer_sse`] 等。
 
-use std::pin::Pin;
 use std::time::Duration;
 
-use futures::Stream;
 use reqwest::Client;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::error::{Error, Result};
+#[cfg(feature = "chat")]
 use crate::sse::{SseByteStream, SseEvent};
+#[cfg(feature = "chat")]
+use futures::Stream;
+#[cfg(feature = "chat")]
+use std::pin::Pin;
 
 /// `text/event-stream` 解析后的 SSE 事件流。
+#[cfg(feature = "chat")]
 pub type SseEventStream = Pin<Box<dyn Stream<Item = Result<SseEvent>> + Send>>;
 
 #[derive(Debug, Clone)]
@@ -99,6 +103,7 @@ impl HttpClient {
     }
 
     /// POST JSON，`Authorization: Bearer {token}`，同时返回响应头中的 `x-request-id`。
+    #[cfg(feature = "chat")]
     pub async fn post_bearer_json_with_request_id<Req, Resp, F>(
         &self,
         url: &str,
@@ -140,7 +145,7 @@ impl HttpClient {
     }
 
     /// POST JSON，自定义请求头，同时返回响应头中的 `request-id`（Anthropic 风格）。
-    #[cfg(feature = "anthropic")]
+    #[cfg(all(feature = "chat", feature = "anthropic"))]
     pub async fn post_json_with_headers_and_request_id<Req, Resp, F>(
         &self,
         url: &str,
@@ -182,7 +187,7 @@ impl HttpClient {
     }
 
     /// POST JSON，URL query 参数，同时返回响应头中的 `x-request-id`（Google 无标准头，通常为 `None`）。
-    #[cfg(feature = "google")]
+    #[cfg(all(feature = "chat", feature = "google"))]
     pub async fn post_json_query_with_request_id<Req, Resp, F>(
         &self,
         url: &str,
@@ -223,6 +228,7 @@ impl HttpClient {
         Ok((request_id, resp))
     }
 
+    #[cfg(feature = "chat")]
     pub async fn post_bearer_sse<Req, F>(
         &self,
         url: &str,
@@ -247,7 +253,7 @@ impl HttpClient {
     }
 
     /// POST JSON + 自定义头，成功时返回 SSE 事件流。
-    #[cfg(feature = "anthropic")]
+    #[cfg(all(feature = "chat", feature = "anthropic"))]
     pub async fn post_json_with_headers_sse<Req, F>(
         &self,
         url: &str,
@@ -272,7 +278,7 @@ impl HttpClient {
     }
 
     /// POST JSON + URL query，成功时返回 SSE 事件流。
-    #[cfg(feature = "google")]
+    #[cfg(all(feature = "chat", feature = "google"))]
     pub async fn post_json_query_sse<Req, F>(
         &self,
         url: &str,
@@ -297,6 +303,7 @@ impl HttpClient {
     }
 }
 
+#[cfg(feature = "chat")]
 async fn into_sse_stream<F>(response: reqwest::Response, map_err_body: F) -> Result<SseEventStream>
 where
     F: FnOnce(String) -> String,
@@ -316,7 +323,9 @@ where
 mod tests {
     use super::*;
     use serde::{Deserialize, Serialize};
-    use wiremock::matchers::{body_json, header, method, path, query_param};
+    #[cfg(all(feature = "chat", feature = "google"))]
+    use wiremock::matchers::query_param;
+    use wiremock::matchers::{body_json, header, method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[derive(Serialize)]
@@ -438,7 +447,7 @@ mod tests {
             .unwrap();
     }
 
-    #[cfg(feature = "anthropic")]
+    #[cfg(all(feature = "chat", feature = "anthropic"))]
     #[tokio::test]
     async fn post_json_with_headers_success_and_custom_headers() {
         let server = MockServer::start().await;
@@ -464,7 +473,7 @@ mod tests {
         assert_eq!(out.msg, "ok");
     }
 
-    #[cfg(feature = "anthropic")]
+    #[cfg(all(feature = "chat", feature = "anthropic"))]
     #[tokio::test]
     async fn post_json_with_headers_api_error() {
         let server = MockServer::start().await;
@@ -495,7 +504,7 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "google")]
+    #[cfg(all(feature = "chat", feature = "google"))]
     #[tokio::test]
     async fn post_json_query_success_and_sends_query() {
         let server = MockServer::start().await;
@@ -519,7 +528,7 @@ mod tests {
         assert_eq!(out.msg, "ok");
     }
 
-    #[cfg(feature = "google")]
+    #[cfg(all(feature = "chat", feature = "google"))]
     #[tokio::test]
     async fn post_json_query_api_error() {
         let server = MockServer::start().await;
