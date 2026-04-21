@@ -67,7 +67,7 @@ impl HttpClient {
     }
 
     /// POST JSON，URL query 参数（如 `key`），无 `Authorization` 头；本方法会设置 `Content-Type: application/json`。
-    #[cfg(feature = "google")]
+    #[cfg(any(all(feature = "embed", feature = "google"), test))]
     pub async fn post_json_query<Req, Resp, F>(
         &self,
         url: &str,
@@ -504,7 +504,7 @@ mod tests {
         }
     }
 
-    #[cfg(all(feature = "chat", feature = "google"))]
+    #[cfg(all(test, feature = "google"))]
     #[tokio::test]
     async fn post_json_query_success_and_sends_query() {
         let server = MockServer::start().await;
@@ -528,7 +528,7 @@ mod tests {
         assert_eq!(out.msg, "ok");
     }
 
-    #[cfg(all(feature = "chat", feature = "google"))]
+    #[cfg(all(test, feature = "google"))]
     #[tokio::test]
     async fn post_json_query_api_error() {
         let server = MockServer::start().await;
