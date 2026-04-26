@@ -381,7 +381,7 @@ mod json_shape_tests {
 
     #[test]
     fn build_request_json_includes_tool_config_for_tool_choice() {
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::Google,
             "k",
             "https://example.invalid/v1beta".to_string(),
@@ -413,7 +413,7 @@ mod json_shape_tests {
 
     #[test]
     fn build_request_json_ignores_response_format() {
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::Google,
             "k",
             "https://example.invalid/v1beta".to_string(),

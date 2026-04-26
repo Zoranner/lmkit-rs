@@ -103,7 +103,7 @@ mod factory_tests {
     #[cfg(feature = "openai")]
     #[test]
     fn openai_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::OpenAI, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::OpenAI, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -120,7 +120,7 @@ mod factory_tests {
     #[cfg(feature = "ollama")]
     #[test]
     fn ollama_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::Ollama, "k", "http://localhost/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Ollama, "k", "http://localhost/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -137,7 +137,7 @@ mod factory_tests {
     #[cfg(feature = "anthropic")]
     #[test]
     fn anthropic_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::Anthropic, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Anthropic, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -154,7 +154,7 @@ mod factory_tests {
     #[cfg(not(feature = "anthropic"))]
     #[test]
     fn anthropic_disabled_without_anthropic_feature() {
-        let cfg = ProviderConfig::new(Provider::Anthropic, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Anthropic, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::ProviderDisabled(s)) => assert_eq!(s, "anthropic"),
             Ok(_) => panic!("expected error"),
@@ -165,7 +165,7 @@ mod factory_tests {
     #[cfg(feature = "google")]
     #[test]
     fn google_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::Google, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Google, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -182,7 +182,7 @@ mod factory_tests {
     #[cfg(not(feature = "google"))]
     #[test]
     fn google_disabled_without_google_feature() {
-        let cfg = ProviderConfig::new(Provider::Google, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Google, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::ProviderDisabled(s)) => assert_eq!(s, "google"),
             Ok(_) => panic!("expected error"),
@@ -193,7 +193,7 @@ mod factory_tests {
     #[cfg(not(feature = "aliyun"))]
     #[test]
     fn aliyun_disabled_without_aliyun_feature() {
-        let cfg = ProviderConfig::new(Provider::Aliyun, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Aliyun, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::ProviderDisabled(s)) => assert_eq!(s, "aliyun"),
             Ok(_) => panic!("expected error"),
@@ -204,7 +204,7 @@ mod factory_tests {
     #[cfg(not(feature = "zhipu"))]
     #[test]
     fn zhipu_disabled_without_zhipu_feature() {
-        let cfg = ProviderConfig::new(Provider::Zhipu, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Zhipu, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::ProviderDisabled(s)) => assert_eq!(s, "zhipu"),
             Ok(_) => panic!("expected error"),

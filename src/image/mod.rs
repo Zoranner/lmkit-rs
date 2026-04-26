@@ -97,7 +97,7 @@ mod factory_tests {
     #[cfg(feature = "ollama")]
     #[test]
     fn ollama_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::Ollama, "k", "http://localhost/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Ollama, "k", "http://localhost/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -114,7 +114,7 @@ mod factory_tests {
     #[cfg(feature = "zhipu")]
     #[test]
     fn zhipu_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::Zhipu, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Zhipu, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -131,7 +131,7 @@ mod factory_tests {
     #[cfg(feature = "anthropic")]
     #[test]
     fn anthropic_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::Anthropic, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Anthropic, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -148,7 +148,7 @@ mod factory_tests {
     #[cfg(not(feature = "anthropic"))]
     #[test]
     fn anthropic_disabled_without_anthropic_feature() {
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::Anthropic,
             "k",
             "https://api.anthropic.com/v1",
@@ -164,7 +164,7 @@ mod factory_tests {
     #[cfg(feature = "google")]
     #[test]
     fn google_is_unsupported() {
-        let cfg = ProviderConfig::new(Provider::Google, "k", "https://x/v1", "m");
+        let cfg = ProviderConfig::with_base_url(Provider::Google, "k", "https://x/v1", "m");
         match create(&cfg) {
             Err(Error::Unsupported {
                 provider,
@@ -181,7 +181,7 @@ mod factory_tests {
     #[cfg(not(feature = "google"))]
     #[test]
     fn google_disabled_without_google_feature() {
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::Google,
             "k",
             "https://generativelanguage.googleapis.com/v1beta",
@@ -197,7 +197,7 @@ mod factory_tests {
     #[cfg(not(feature = "openai"))]
     #[test]
     fn openai_disabled_without_openai_feature() {
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::OpenAI,
             "k",
             "https://api.openai.com/v1",
@@ -213,7 +213,7 @@ mod factory_tests {
     #[cfg(not(feature = "aliyun"))]
     #[test]
     fn aliyun_disabled_without_aliyun_feature() {
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::Aliyun,
             "k",
             "https://dashscope.aliyuncs.com/api/v1",

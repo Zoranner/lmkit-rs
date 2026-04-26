@@ -207,7 +207,7 @@ mod tests {
     }
 
     fn test_config(server: &MockServer) -> ProviderConfig {
-        let mut cfg = ProviderConfig::new(
+        let mut cfg = ProviderConfig::with_base_url(
             Provider::Google,
             "AIza-test",
             format!("{}/v1beta", server.uri()),
@@ -300,7 +300,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let mut cfg = ProviderConfig::new(
+        let mut cfg = ProviderConfig::with_base_url(
             Provider::Google,
             "k",
             format!("{}/v1beta", server.uri()),

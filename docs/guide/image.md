@@ -29,7 +29,6 @@ use lmkit::{create_image_provider, ImageSize, Provider, ProviderConfig};
 let cfg = ProviderConfig::new(
     Provider::OpenAI,
     std::env::var("OPENAI_API_KEY")?,
-    "https://api.openai.com/v1",
     "dall-e-3",
 );
 

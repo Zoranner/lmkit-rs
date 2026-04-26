@@ -93,7 +93,7 @@ mod tests {
     }
 
     fn test_config(server: &MockServer) -> ProviderConfig {
-        ProviderConfig::new(
+        ProviderConfig::with_base_url(
             Provider::Zhipu,
             "zk",
             server.uri().to_string(),

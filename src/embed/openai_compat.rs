@@ -99,7 +99,7 @@ mod tests {
     }
 
     fn test_config(server: &MockServer) -> ProviderConfig {
-        let mut cfg = ProviderConfig::new(
+        let mut cfg = ProviderConfig::with_base_url(
             Provider::OpenAI,
             "ek",
             server.uri().to_string(),

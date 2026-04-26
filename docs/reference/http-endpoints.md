@@ -54,7 +54,8 @@ Authorization: Bearer {api_key}
 | OpenAI | `https://api.openai.com/v1` |
 | 阿里云 | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
 | Ollama | `http://127.0.0.1:11434/v1` |
-| 智谱 | `https://open.bigmodel.cn/api/paas/v4` |
+| 智谱（中国站） | `https://open.bigmodel.cn/api/paas/v4` |
+| 智谱（国际站） | `https://api.z.ai/api/paas/v4` |
 
 ### Anthropic Messages
 

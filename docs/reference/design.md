@@ -69,6 +69,8 @@ features = ["aliyun", "chat", "embed", "rerank", "image"]
 - `dimension` — 向量维度（embed 必填）
 - `timeout` — 可选超时
 
+`ProviderConfig::new(...)` 使用内置厂商常用官方网关创建配置。代理、私有网关、区域端点和模态专用路径通过 `ProviderConfig::with_base_url(...)` 显式传入。
+
 ### 模型名称透传
 
 `model` 字段**原样进入请求**，库内不做校验：

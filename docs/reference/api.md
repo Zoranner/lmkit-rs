@@ -25,18 +25,19 @@
 let mut cfg = ProviderConfig::new(
     Provider::OpenAI,                              // 厂商
     "sk-xxx".to_string(),                          // API Key
-    "https://api.openai.com/v1".to_string(),       // 网关地址
     "gpt-4o-mini".to_string(),                     // 模型名称
 );
 cfg.dimension = Some(1536);  // embed 必填
 cfg.timeout = Some(Duration::from_secs(30));  // 可选
 ```
 
+如需代理、私有网关、区域端点或模态专用路径，使用 `ProviderConfig::with_base_url` 显式传入 `base_url`。
+
 | 字段 | 类型 | 说明 |
 |:---|:---|:---|
 | `provider` | `Provider` | 厂商枚举 |
 | `api_key` | `String` | API 密钥 |
-| `base_url` | `String` | API 网关地址 |
+| `base_url` | `String` | API 网关地址；`new` 会自动填充默认值 |
 | `model` | `String` | 模型名称（原样透传） |
 | `dimension` | `Option<usize>` | 向量维度（embed 必填） |
 | `timeout` | `Option<Duration>` | 请求超时 |
@@ -61,6 +62,19 @@ let provider: Provider = "openai".parse()?;  // OK
 let provider: Provider = "Aliyun".parse()?;  // OK
 let provider: Provider = "unknown".parse()?; // Err(UnknownProvider)
 ```
+
+`ProviderConfig::new` 使用内置厂商的常用官方网关：
+
+| Provider | 默认 `base_url` |
+|:---|:---|
+| `OpenAI` | `https://api.openai.com/v1` |
+| `Anthropic` | `https://api.anthropic.com/v1` |
+| `Google` | `https://generativelanguage.googleapis.com/v1beta` |
+| `Aliyun` | `https://dashscope.aliyuncs.com/compatible-mode/v1` |
+| `Ollama` | `http://localhost:11434/v1` |
+| `Zhipu` | `https://open.bigmodel.cn/api/paas/v4` |
+
+智谱还有国际站 endpoint：`https://api.z.ai/api/paas/v4`。需要国际站时，使用 `ProviderConfig::with_base_url` 显式传入该地址。
 
 ---
 
@@ -257,7 +271,6 @@ use lmkit::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
 let cfg = ProviderConfig::new(
     Provider::OpenAI,
     std::env::var("OPENAI_API_KEY")?,
-    "https://api.openai.com/v1",
     "gpt-4o-mini",
 );
 let chat = create_chat_provider(&cfg)?;

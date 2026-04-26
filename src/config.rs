@@ -16,6 +16,19 @@ pub enum Provider {
     Zhipu,
 }
 
+impl Provider {
+    const fn default_base_url(self) -> &'static str {
+        match self {
+            Provider::OpenAI => "https://api.openai.com/v1",
+            Provider::Aliyun => "https://dashscope.aliyuncs.com/compatible-mode/v1",
+            Provider::Anthropic => "https://api.anthropic.com/v1",
+            Provider::Google => "https://generativelanguage.googleapis.com/v1beta",
+            Provider::Ollama => "http://localhost:11434/v1",
+            Provider::Zhipu => "https://open.bigmodel.cn/api/paas/v4",
+        }
+    }
+}
+
 impl fmt::Display for Provider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
@@ -62,7 +75,14 @@ pub struct ProviderConfig {
 }
 
 impl ProviderConfig {
-    pub fn new(
+    pub fn new(provider: Provider, api_key: impl Into<String>, model: impl Into<String>) -> Self {
+        Self::with_base_url(provider, api_key, provider.default_base_url(), model)
+    }
+
+    /// 使用显式 `base_url` 创建配置。
+    ///
+    /// 用于代理、私有网关、区域化端点，或阿里云文生图等与默认网关不同的路径。
+    pub fn with_base_url(
         provider: Provider,
         api_key: impl Into<String>,
         base_url: impl Into<String>,
@@ -99,5 +119,64 @@ mod tests {
     #[test]
     fn provider_from_str_unknown() {
         assert!(Provider::from_str("unknown").is_err());
+    }
+
+    #[test]
+    fn provider_default_base_url_matches_official_endpoints() {
+        assert_eq!(
+            Provider::OpenAI.default_base_url(),
+            "https://api.openai.com/v1"
+        );
+        assert_eq!(
+            Provider::Aliyun.default_base_url(),
+            "https://dashscope.aliyuncs.com/compatible-mode/v1"
+        );
+        assert_eq!(
+            Provider::Anthropic.default_base_url(),
+            "https://api.anthropic.com/v1"
+        );
+        assert_eq!(
+            Provider::Google.default_base_url(),
+            "https://generativelanguage.googleapis.com/v1beta"
+        );
+        assert_eq!(
+            Provider::Ollama.default_base_url(),
+            "http://localhost:11434/v1"
+        );
+        assert_eq!(
+            Provider::Zhipu.default_base_url(),
+            "https://open.bigmodel.cn/api/paas/v4"
+        );
+    }
+
+    #[test]
+    fn provider_config_new_uses_default_base_url() {
+        let cfg = super::ProviderConfig::new(Provider::OpenAI, "sk-test", "gpt-test");
+
+        assert_eq!(cfg.provider, Provider::OpenAI);
+        assert_eq!(cfg.api_key, "sk-test");
+        assert_eq!(cfg.base_url, Provider::OpenAI.default_base_url());
+        assert_eq!(cfg.model, "gpt-test");
+        assert_eq!(cfg.dimension, None);
+        assert_eq!(cfg.timeout, None);
+        assert_eq!(cfg.max_concurrent, None);
+    }
+
+    #[test]
+    fn provider_config_with_base_url_preserves_explicit_endpoint() {
+        let cfg = super::ProviderConfig::with_base_url(
+            Provider::Zhipu,
+            "zk-test",
+            "https://api.z.ai/api/paas/v4",
+            "glm-test",
+        );
+
+        assert_eq!(cfg.provider, Provider::Zhipu);
+        assert_eq!(cfg.api_key, "zk-test");
+        assert_eq!(cfg.base_url, "https://api.z.ai/api/paas/v4");
+        assert_eq!(cfg.model, "glm-test");
+        assert_eq!(cfg.dimension, None);
+        assert_eq!(cfg.timeout, None);
+        assert_eq!(cfg.max_concurrent, None);
     }
 }

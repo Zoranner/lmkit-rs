@@ -6,7 +6,7 @@ use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn test_config(server: &MockServer) -> ProviderConfig {
-    ProviderConfig::new(
+    ProviderConfig::with_base_url(
         Provider::Anthropic,
         "sk-ant-test",
         format!("{}/v1", server.uri()),
@@ -15,7 +15,7 @@ fn test_config(server: &MockServer) -> ProviderConfig {
 }
 
 fn test_config_static() -> ProviderConfig {
-    ProviderConfig::new(
+    ProviderConfig::with_base_url(
         Provider::Anthropic,
         "sk-ant-test",
         "https://api.anthropic.com/v1",

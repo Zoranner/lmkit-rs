@@ -6,7 +6,7 @@ use wiremock::matchers::{body_json, header, method, path};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn test_config(server: &MockServer) -> ProviderConfig {
-    ProviderConfig::new(
+    ProviderConfig::with_base_url(
         Provider::OpenAI,
         "test-key",
         server.uri().to_string(),

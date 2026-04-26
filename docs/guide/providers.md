@@ -14,7 +14,6 @@ features = ["openai", "chat", "embed", "image"]
 let cfg = ProviderConfig::new(
     Provider::OpenAI,
     std::env::var("OPENAI_API_KEY")?,
-    "https://api.openai.com/v1",
     "gpt-4o-mini",          // 或 gpt-4o、gpt-3.5-turbo 等
 );
 ```
@@ -42,7 +41,6 @@ features = ["anthropic", "chat"]
 let cfg = ProviderConfig::new(
     Provider::Anthropic,
     std::env::var("ANTHROPIC_API_KEY")?,
-    "https://api.anthropic.com/v1",
     "claude-3-5-sonnet-20241022",
 );
 ```
@@ -72,7 +70,6 @@ features = ["google", "chat", "embed"]
 let cfg = ProviderConfig::new(
     Provider::Google,
     std::env::var("GOOGLE_API_KEY")?,
-    "https://generativelanguage.googleapis.com/v1beta",
     "gemini-1.5-flash",     // 或 gemini-1.5-pro、gemini-2.0-flash 等
 );
 ```
@@ -107,7 +104,6 @@ Chat / Embed 使用兼容网关：
 let cfg = ProviderConfig::new(
     Provider::Aliyun,
     std::env::var("DASHSCOPE_API_KEY")?,
-    "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "qwen-turbo",
 );
 ```
@@ -116,7 +112,7 @@ Rerank / Image 使用独立网关：
 
 ```rust
 // Rerank
-let mut cfg = ProviderConfig::new(
+let mut cfg = ProviderConfig::with_base_url(
     Provider::Aliyun,
     std::env::var("DASHSCOPE_API_KEY")?,
     "https://dashscope.aliyuncs.com/api/v1",  // 独立网关
@@ -124,7 +120,7 @@ let mut cfg = ProviderConfig::new(
 );
 
 // Image
-let mut cfg = ProviderConfig::new(
+let mut cfg = ProviderConfig::with_base_url(
     Provider::Aliyun,
     std::env::var("DASHSCOPE_API_KEY")?,
     "https://dashscope.aliyuncs.com/api/v1",  // 独立网关
@@ -153,7 +149,6 @@ features = ["ollama", "chat", "embed"]
 let cfg = ProviderConfig::new(
     Provider::Ollama,
     String::new(),              // 本地无需 API Key
-    "http://127.0.0.1:11434/v1",
     "llama3.2",                 // 或任何已 pull 的模型
 );
 ```
@@ -192,10 +187,11 @@ features = ["zhipu", "chat", "embed", "rerank"]
 let cfg = ProviderConfig::new(
     Provider::Zhipu,
     std::env::var("ZHIPU_API_KEY")?,
-    "https://open.bigmodel.cn/api/paas/v4",
     "glm-4-flash",
 );
 ```
+
+`ProviderConfig::new` 使用中国站 `https://open.bigmodel.cn/api/paas/v4`。国际站使用 `https://api.z.ai/api/paas/v4`，需要时用 `ProviderConfig::with_base_url` 显式传入。
 
 | 能力 | 支持 | 常用模型 |
 |:---|:---:|:---|
@@ -214,7 +210,7 @@ let cfg = ProviderConfig::new(
 
 ```rust
 // 月之暗面 Kimi
-let cfg = ProviderConfig::new(
+let cfg = ProviderConfig::with_base_url(
     Provider::OpenAI,
     std::env::var("MOONSHOT_API_KEY")?,
     "https://api.moonshot.cn/v1",
@@ -222,7 +218,7 @@ let cfg = ProviderConfig::new(
 );
 
 // DeepSeek
-let cfg = ProviderConfig::new(
+let cfg = ProviderConfig::with_base_url(
     Provider::OpenAI,
     std::env::var("DEEPSEEK_API_KEY")?,
     "https://api.deepseek.com/v1",
@@ -230,7 +226,7 @@ let cfg = ProviderConfig::new(
 );
 
 // MiniMax
-let cfg = ProviderConfig::new(
+let cfg = ProviderConfig::with_base_url(
     Provider::OpenAI,
     std::env::var("MINIMAX_API_KEY")?,
     "https://api.minimax.chat/v1",

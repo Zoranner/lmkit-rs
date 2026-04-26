@@ -22,7 +22,6 @@ use lmkit::{create_embed_provider, Provider, ProviderConfig};
 let mut cfg = ProviderConfig::new(
     Provider::OpenAI,
     std::env::var("OPENAI_API_KEY")?,
-    "https://api.openai.com/v1",
     "text-embedding-3-small",
 );
 cfg.dimension = Some(1536); // 必填

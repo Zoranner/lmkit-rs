@@ -43,7 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = ProviderConfig::new(
         Provider::OpenAI,
         std::env::var("OPENAI_API_KEY")?,
-        "https://api.openai.com/v1",
         "gpt-4o-mini",
     );
 
@@ -67,7 +66,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = ProviderConfig::new(
         Provider::OpenAI,
         std::env::var("OPENAI_API_KEY")?,
-        "https://api.openai.com/v1",
         "gpt-4o-mini",
     );
 
@@ -89,14 +87,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### 切换厂商
 
-把 `Provider::OpenAI` 改成目标厂商，更新 `base_url` 和密钥，其他代码不动：
+把 `Provider::OpenAI` 改成目标厂商并更新密钥即可，内置厂商已提供默认 `base_url`：
 
 ```rust
 // 切到阿里云 Qwen
 let cfg = ProviderConfig::new(
     Provider::Aliyun,
     std::env::var("DASHSCOPE_API_KEY")?,
-    "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "qwen-turbo",
 );
 
@@ -104,10 +101,11 @@ let cfg = ProviderConfig::new(
 let cfg = ProviderConfig::new(
     Provider::Ollama,
     String::new(),
-    "http://127.0.0.1:11434/v1",
     "llama3",
 );
 ```
+
+需要代理、私有网关、区域端点，或阿里云文生图这类模态专用路径时，使用 `ProviderConfig::with_base_url` 显式传入 `base_url`。
 
 ## 支持的厂商与能力
 

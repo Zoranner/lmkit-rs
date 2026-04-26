@@ -7,7 +7,7 @@ use wiremock::matchers::{method, path_regex, query_param};
 use wiremock::{Mock, MockServer, ResponseTemplate};
 
 fn test_config(server: &MockServer) -> ProviderConfig {
-    ProviderConfig::new(
+    ProviderConfig::with_base_url(
         Provider::Google,
         "AIza-test",
         format!("{}/v1beta", server.uri()),

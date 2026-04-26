@@ -11,12 +11,7 @@ use lmkit::{create_chat_provider, ChatEvent, ChatRequest, Provider, ProviderConf
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_key = std::env::var("OPENAI_API_KEY")?;
-    let cfg = ProviderConfig::new(
-        Provider::OpenAI,
-        api_key,
-        "https://api.openai.com/v1",
-        "gpt-4o-mini",
-    );
+    let cfg = ProviderConfig::new(Provider::OpenAI, api_key, "gpt-4o-mini");
     let chat = create_chat_provider(&cfg)?;
     let prompt = std::env::args()
         .nth(1)

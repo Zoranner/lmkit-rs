@@ -43,7 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = ProviderConfig::new(
         Provider::OpenAI,
         std::env::var("OPENAI_API_KEY")?,
-        "https://api.openai.com/v1",
         "gpt-4o-mini",
     );
 
@@ -76,7 +75,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut cfg = ProviderConfig::new(
         Provider::OpenAI,
         std::env::var("OPENAI_API_KEY")?,
-        "https://api.openai.com/v1",
         "text-embedding-3-small",
     );
     cfg.dimension = Some(1536); // embed 必须设置维度
@@ -100,7 +98,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 let cfg = ProviderConfig::new(
     Provider::OpenAI,
     std::env::var("OPENAI_API_KEY")?,
-    "https://api.openai.com/v1",
     "gpt-4o-mini",
 );
 
@@ -108,7 +105,6 @@ let cfg = ProviderConfig::new(
 let cfg = ProviderConfig::new(
     Provider::Anthropic,
     std::env::var("ANTHROPIC_API_KEY")?,
-    "https://api.anthropic.com/v1",
     "claude-3-5-sonnet-20241022",
 );
 
@@ -116,7 +112,6 @@ let cfg = ProviderConfig::new(
 let cfg = ProviderConfig::new(
     Provider::Google,
     std::env::var("GOOGLE_API_KEY")?,
-    "https://generativelanguage.googleapis.com/v1beta",
     "gemini-1.5-flash",
 );
 
@@ -124,7 +119,6 @@ let cfg = ProviderConfig::new(
 let cfg = ProviderConfig::new(
     Provider::Aliyun,
     std::env::var("DASHSCOPE_API_KEY")?,
-    "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "qwen-turbo",
 );
 
@@ -132,7 +126,6 @@ let cfg = ProviderConfig::new(
 let cfg = ProviderConfig::new(
     Provider::Ollama,
     String::new(),
-    "http://127.0.0.1:11434/v1",
     "llama3.2",
 );
 ```
@@ -147,7 +140,7 @@ let cfg = ProviderConfig::new(
 |:---|:---|:---|:---:|
 | `provider` | `Provider` | 厂商枚举 | ✅ |
 | `api_key` | `String` | API 密钥 | ✅ |
-| `base_url` | `String` | API 网关地址 | ✅ |
+| `base_url` | `String` | API 网关地址；`new` 会自动填充默认值 | 默认构造时 — |
 | `model` | `String` | 模型名称（原样透传） | ✅ |
 | `dimension` | `Option<usize>` | 向量维度（embed 必填） | embed 时 ✅ |
 | `timeout` | `Option<Duration>` | 请求超时（覆盖默认值） | — |
@@ -158,6 +151,8 @@ use std::time::Duration;
 let mut cfg = ProviderConfig::new(...);
 cfg.timeout = Some(Duration::from_secs(60)); // 超长生成时可调大
 ```
+
+使用代理、私有网关、区域端点，或阿里云文生图原生路径时，改用 `ProviderConfig::with_base_url` 显式传入 `base_url`。
 
 ---
 

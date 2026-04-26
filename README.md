@@ -43,7 +43,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = ProviderConfig::new(
         Provider::OpenAI,
         std::env::var("OPENAI_API_KEY")?,
-        "https://api.openai.com/v1",
         "gpt-4o-mini",
     );
 
@@ -67,7 +66,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = ProviderConfig::new(
         Provider::OpenAI,
         std::env::var("OPENAI_API_KEY")?,
-        "https://api.openai.com/v1",
         "gpt-4o-mini",
     );
 
@@ -89,14 +87,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Switch providers
 
-Change `Provider::OpenAI` to your target, update `base_url` and the API key — everything else stays the same:
+Change `Provider::OpenAI` to your target and update the API key — built-in providers have default `base_url` values:
 
 ```rust
 // Aliyun Qwen
 let cfg = ProviderConfig::new(
     Provider::Aliyun,
     std::env::var("DASHSCOPE_API_KEY")?,
-    "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "qwen-turbo",
 );
 
@@ -104,10 +101,11 @@ let cfg = ProviderConfig::new(
 let cfg = ProviderConfig::new(
     Provider::Ollama,
     String::new(),
-    "http://127.0.0.1:11434/v1",
     "llama3",
 );
 ```
+
+Use `ProviderConfig::with_base_url` when you need a proxy, private gateway, regional endpoint, or modality-specific path such as Aliyun native image generation.
 
 ## Provider & Capability Matrix
 

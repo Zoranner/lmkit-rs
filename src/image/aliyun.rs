@@ -208,7 +208,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::Aliyun,
             "sk-test",
             format!("{}/api/v1", server.uri()),
@@ -236,7 +236,7 @@ mod tests {
             .mount(&server)
             .await;
 
-        let cfg = ProviderConfig::new(
+        let cfg = ProviderConfig::with_base_url(
             Provider::Aliyun,
             "sk-test",
             format!("{}/api/v1", server.uri()),

@@ -10,6 +10,7 @@
 
 ### 新增
 
+- **默认 `base_url`** — `ProviderConfig::new(...)` 直接使用内置厂商常用 API 网关，显式网关使用 `ProviderConfig::with_base_url(...)`。
 - **`ChatEvent` 枚举** — 替代原扁平 `ChatChunk` 结构体，流式事件现为 `Delta(String)` / `ToolCallDelta(Vec<ToolCallDelta>)` / `Finish(FinishReason)` 三个变体，消除三字段均可为 `None` 的歧义。
 - **`merge_tool_call_deltas`** — 将流式 `ToolCallDelta` 按 `index` 合并为完整 `ToolCall` 列表的工具函数。
 - **`ChatResponse::request_id`** — 从响应头提取 request ID（OpenAI 兼容：`x-request-id`；Anthropic：`request-id`；Gemini：始终 `None`）。
@@ -19,6 +20,7 @@
 
 ### 破坏性变更
 
+- `ProviderConfig::new` 改为三参数默认网关构造；需要自定义 `base_url` 的调用方改用 `ProviderConfig::with_base_url`。
 - `ChatStream` 的 item 类型从 `Result<ChatChunk>` 改为 `Result<ChatEvent>`，调用方需更新 match 逻辑。
 
 ---

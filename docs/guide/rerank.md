@@ -30,7 +30,7 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```rust
 use lmkit::{create_rerank_provider, Provider, ProviderConfig};
 
-let cfg = ProviderConfig::new(
+let cfg = ProviderConfig::with_base_url(
     Provider::Aliyun,
     std::env::var("DASHSCOPE_API_KEY")?,
     "https://dashscope.aliyuncs.com/api/v1", // rerank 使用独立网关
@@ -108,7 +108,8 @@ let context: Vec<&str> = ranked.iter().map(|r| docs[r.index]).collect();
 | 厂商 | `base_url` | 常用模型 |
 |:---|:---|:---|
 | 阿里云 | `https://dashscope.aliyuncs.com/api/v1` | `gte-rerank`、`gte-rerank-v2` |
-| 智谱 | `https://open.bigmodel.cn/api/paas/v4` | `rerank` |
+| 智谱（中国站） | `https://open.bigmodel.cn/api/paas/v4` | `rerank` |
+| 智谱（国际站） | `https://api.z.ai/api/paas/v4` | `rerank` |
 
 > 阿里云 rerank 使用独立网关（`/api/v1`），与 Chat/Embed 的 `/compatible-mode/v1` 不同。
 
