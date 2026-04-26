@@ -1,13 +1,32 @@
 # 开发计划
 
-与当前仓库对齐的待办与路线说明。实现细节以 `docs/design-guidelines.md` 为准。
+与当前仓库对齐的待办与路线说明。实现细节以 `docs/reference/design.md` 为准。
 
 ---
 
 ## 示例与文档卫生
 
 - [ ] 补充 `examples/`：除 `stream_chat` 外，增加「换厂商同一套代码」等非流式示例（可与 README 快速开始呼应）
-- [ ] `docs/contributing.md` 中克隆地址仍为占位 `your-repo`，有公开仓库后改为真实 URL
+- [ ] `docs/reference/contributing.md` 中克隆地址仍为占位 `your-repo`，有公开仓库后改为真实 URL
+
+---
+
+## 小版本发包准备
+
+当前预备发包版本为 `0.1.1`。`CHANGELOG.md` 的 Unreleased 中包含 `ProviderConfig::new` 参数变化和 `ChatStream` item 类型变化，发包前需要在迁移说明中明确标注，避免调用方误判升级成本。
+
+- [ ] 确认本轮范围只包含已经落在 Unreleased 的能力：默认 `base_url`、`ChatEvent` 枚举、工具调用增量合并、`request_id`、`max_concurrent`、错误分类辅助方法、`ChatRequest::preset`
+- [ ] 补一条非流式示例，展示同一业务代码通过 `ProviderConfig` 切换 OpenAI / 阿里云 / Ollama
+- [ ] 全面检查 README、README.zh、docs guide、API reference 与 rustdoc，确保 `ProviderConfig::new` / `with_base_url`、`ChatEvent`、`ChatStream` 的新签名没有旧写法残留
+- [ ] 将 `Cargo.toml` 的 `version` 更新为 `0.1.1`
+- [ ] 将 `CHANGELOG.md` 的 `[Unreleased]` 归档为 `[0.1.1] - YYYY-MM-DD`，并保留新的空 `[Unreleased]`
+- [ ] 本地执行 `cargo fmt --all -- --check`
+- [ ] 本地执行 `cargo clippy --all-targets --all-features -- -D warnings`
+- [ ] 本地执行 `cargo test --all-features`
+- [ ] 本地执行 `cargo doc --all-features --no-deps`
+- [ ] 本地执行 `cargo package --allow-dirty` 检查包内容；正式发包前在干净工作区重新执行不带 `--allow-dirty` 的 `cargo package`
+- [ ] 确认 GitHub 仓库已配置 `CARGO_ACCESS_TOKEN`
+- [ ] 提交版本更新，创建 `v0.1.1` 标签，并推送标签触发 `.github/workflows/cargo-publish.yml`
 
 ---
 

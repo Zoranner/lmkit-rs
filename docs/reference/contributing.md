@@ -13,8 +13,8 @@ cd lmkit
 cargo test --all-features
 
 # 代码检查
-cargo fmt --check
-cargo clippy --all-features -- -D warnings
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
 
 # 生成本地文档
 cargo doc --all-features --no-deps --open
@@ -94,19 +94,19 @@ async fn test_chat_success() {
 ### 发版前检查
 
 ```bash
-# 1. 代码格式
-cargo fmt --check
+# 代码格式
+cargo fmt --all -- --check
 
-# 2. 静态检查
-cargo clippy --all-features -- -D warnings
+# 静态检查
+cargo clippy --all-targets --all-features -- -D warnings
 
-# 3. 测试
+# 测试
 cargo test --all-features
 
-# 4. 文档
+# 文档
 cargo doc --all-features --no-deps
 
-# 5. 打包检查（可选）
+# 打包检查（可选）
 cargo package
 ```
 
@@ -120,8 +120,8 @@ cargo package
 ### CI 自动发布
 
 推送 `v*` 标签后，GitHub Actions 自动执行：
-- `cargo fmt --check`
-- `cargo clippy --all-features -- -D warnings`
+- `cargo fmt --all -- --check`
+- `cargo clippy --all-targets --all-features -- -D warnings`
 - `cargo test --all-features`
 - `cargo publish`（需配置 `CARGO_ACCESS_TOKEN`）
 
@@ -133,10 +133,10 @@ cargo package
 
 | 变更内容 | 需更新文档 |
 |:---|:---|
-| 新增/修改 trait | `docs/api-reference.md` + rustdoc |
-| 新增/修改 HTTP 端点 | `docs/http-endpoints.md` |
-| 新增厂商或能力 | `README.md` 矩阵 + `docs/api-reference.md` |
-| 修改错误语义 | `docs/api-reference.md` + `docs/design-guidelines.md` |
+| 新增/修改 trait | `docs/reference/api.md` + rustdoc |
+| 新增/修改 HTTP 端点 | `docs/reference/http-endpoints.md` |
+| 新增厂商或能力 | `README.md` 矩阵 + `docs/reference/api.md` |
+| 修改错误语义 | `docs/reference/api.md` + `docs/reference/design.md` |
 | 用户可见行为 | `CHANGELOG.md` |
 
 ---

@@ -222,9 +222,9 @@ pub enum FinishReason {
 |:---|:---|
 | rustdoc | 调用方在 IDE 或 `cargo doc` 中直接看到的契约 |
 | `README.md` | 快速入门、能力矩阵、配置示例 |
-| `docs/api-reference.md` | Rust API 完整参考 |
-| `docs/http-endpoints.md` | HTTP 端点细节 |
-| `docs/design-guidelines.md` | 架构原则与边界 |
+| `docs/reference/api.md` | Rust API 完整参考 |
+| `docs/reference/http-endpoints.md` | HTTP 端点细节 |
+| `docs/reference/design.md` | 架构原则与边界 |
 
 改行为时至少同步一侧；用户可见行为变了，应同步 `README.md`。
 
@@ -250,8 +250,8 @@ pub enum FinishReason {
 
 发版前确保全 feature 下通过：
 ```bash
-cargo fmt --check
-cargo clippy --all-features -- -D warnings
+cargo fmt --all -- --check
+cargo clippy --all-targets --all-features -- -D warnings
 cargo test --all-features
 ```
 
