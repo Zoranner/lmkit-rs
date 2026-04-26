@@ -6,7 +6,7 @@
 
 ```toml
 [dependencies]
-lmkit = { version = "0.2", features = ["openai", "embed"] }
+lmkit = { version = "0.1", features = ["openai", "embed"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 

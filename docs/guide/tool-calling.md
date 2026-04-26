@@ -195,7 +195,7 @@ async fn execute_tool(name: &str, arguments: &str) -> String {
 流式模式下工具调用通过 `ToolCallDelta` 增量返回，需要手动拼接参数：
 
 ```rust
-use lmkit::{ChatRequest, FinishReason, ToolCallDelta};
+use lmkit::{ChatEvent, ChatRequest, FinishReason, ToolCallDelta};
 use std::collections::HashMap;
 
 let mut stream = chat
@@ -211,33 +211,30 @@ let mut stream = chat
 let mut calls: HashMap<u32, ToolCallAccumulator> = HashMap::new();
 
 while let Some(item) = stream.next().await {
-    let chunk = item?;
-
-    if let Some(text) = &chunk.delta {
-        print!("{text}");
-    }
-
-    if let Some(deltas) = chunk.tool_call_deltas {
-        for delta in deltas {
-            let acc = calls.entry(delta.index).or_default();
-            if let Some(id) = delta.id {
-                acc.id = id;
-            }
-            if let Some(name) = delta.function_name {
-                acc.name = name;
-            }
-            if let Some(args) = delta.function_arguments {
-                acc.arguments.push_str(&args);
+    match item? {
+        ChatEvent::Delta(text) => print!("{text}"),
+        ChatEvent::ToolCallDelta(deltas) => {
+            for delta in deltas {
+                let acc = calls.entry(delta.index).or_default();
+                if let Some(id) = delta.id {
+                    acc.id = id;
+                }
+                if let Some(name) = delta.function_name {
+                    acc.name = name;
+                }
+                if let Some(args) = delta.function_arguments {
+                    acc.arguments.push_str(&args);
+                }
             }
         }
-    }
-
-    if chunk.finish_reason == Some(FinishReason::ToolCalls) {
-        // 流结束后处理完整的工具调用
-        for (_, acc) in &calls {
-            println!("\n调用: {} ({})", acc.name, acc.id);
-            println!("参数: {}", acc.arguments);
+        ChatEvent::Finish(FinishReason::ToolCalls) => {
+            // 流结束后处理完整的工具调用
+            for (_, acc) in &calls {
+                println!("\n调用: {} ({})", acc.name, acc.id);
+                println!("参数: {}", acc.arguments);
+            }
         }
+        ChatEvent::Finish(_) => {}
     }
 }
 

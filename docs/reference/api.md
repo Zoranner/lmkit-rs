@@ -266,7 +266,7 @@ pub enum FinishReason {
 
 ```rust
 use futures::StreamExt;
-use lmkit::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
+use lmkit::{create_chat_provider, ChatEvent, ChatRequest, Provider, ProviderConfig};
 
 let cfg = ProviderConfig::new(
     Provider::OpenAI,
@@ -279,12 +279,12 @@ let mut stream = chat
     .complete_stream(&ChatRequest::single_user("介绍一下 Rust"))
     .await?;
 while let Some(item) = stream.next().await {
-    let chunk = item?;
-    if let Some(text) = chunk.delta {
-        print!("{text}");
-    }
-    if let Some(reason) = chunk.finish_reason {
-        eprintln!("\n[结束: {:?}]", reason);
+    match item? {
+        ChatEvent::Delta(text) => print!("{text}"),
+        ChatEvent::ToolCallDelta(deltas) => eprintln!("\n[工具调用增量: {deltas:?}]"),
+        ChatEvent::Finish(reason) => {
+            eprintln!("\n[结束: {:?}]", reason);
+        }
     }
 }
 ```

@@ -8,7 +8,7 @@
 
 ```toml
 [dependencies]
-lmkit = { version = "0.2", features = ["openai", "chat", "embed"] }
+lmkit = { version = "0.1", features = ["openai", "chat", "embed"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 

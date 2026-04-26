@@ -8,6 +8,10 @@
 
 ## [Unreleased]
 
+---
+
+## [0.1.1] - 2026-04-26
+
 ### 新增
 
 - **默认 `base_url`** — `ProviderConfig::new(...)` 直接使用内置厂商常用 API 网关，显式网关使用 `ProviderConfig::with_base_url(...)`。

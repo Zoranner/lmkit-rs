@@ -116,16 +116,15 @@ match chat.complete(&request).await {
 
 ```rust
 use futures::StreamExt;
+use lmkit::ChatEvent;
 
 let mut stream = chat.complete_stream(&request).await?;
 
 while let Some(item) = stream.next().await {
     match item {
-        Ok(chunk) => {
-            if let Some(text) = chunk.delta {
-                print!("{text}");
-            }
-        }
+        Ok(ChatEvent::Delta(text)) => print!("{text}"),
+        Ok(ChatEvent::ToolCallDelta(deltas)) => eprintln!("\n工具调用增量: {deltas:?}"),
+        Ok(ChatEvent::Finish(reason)) => eprintln!("\n结束原因: {reason:?}"),
         Err(Error::Api { status, message }) => {
             eprintln!("\n流中断，API 错误 {status}: {message}");
             break;

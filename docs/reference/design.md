@@ -20,7 +20,7 @@
 - 长连接（除单次 HTTP 流式读响应体外）
 - 重试风暴控制
 
-流式 Chat 将各厂商增量映射为统一的 `ChatChunk`（`delta` 文本、`tool_call_deltas` 工具片段、`finish_reason`）与 `FinishReason`，不暴露厂商原始 SSE 事件结构。OpenAI 兼容路径对齐 Chat Completions；Anthropic 对齐 Messages；Gemini 对齐 `generateContent` / `streamGenerateContent`。
+流式 Chat 将各厂商增量映射为统一的 `ChatEvent` 枚举（`Delta` 文本、`ToolCallDelta` 工具片段、`Finish` 结束原因），不暴露厂商原始 SSE 事件结构。OpenAI 兼容路径对齐 Chat Completions；Anthropic 对齐 Messages；Gemini 对齐 `generateContent` / `streamGenerateContent`。
 
 ---
 
@@ -105,7 +105,7 @@ path = "/chat/completions"
 
 crate 根重导出的稳定面：
 - trait：`ChatProvider`、`EmbedProvider` 等
-- 类型：`Provider`、`ProviderConfig`、`Error`、`ChatRequest`、`ChatResponse`、`ChatMessage`、`ChatChunk`、`FinishReason`、`ToolCall`、`ToolCallDelta` 等
+- 类型：`Provider`、`ProviderConfig`、`Error`、`ChatRequest`、`ChatResponse`、`ChatMessage`、`ChatEvent`、`FinishReason`、`ToolCall`、`ToolCallDelta` 等
 - 工厂：`create_chat_provider` 等
 
 ### 实现细节

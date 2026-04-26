@@ -15,7 +15,7 @@
 
 ```toml
 [dependencies]
-lmkit = { version = "0.2", features = ["openai", "image"] }
+lmkit = { version = "0.1", features = ["openai", "image"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 

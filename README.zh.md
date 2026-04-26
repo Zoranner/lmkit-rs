@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```rust
 use futures::StreamExt;
-use lmkit::{create_chat_provider, ChatRequest, Provider, ProviderConfig};
+use lmkit::{create_chat_provider, ChatEvent, ChatRequest, Provider, ProviderConfig};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -74,10 +74,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .complete_stream(&ChatRequest::single_user("讲一个笑话"))
         .await?;
 
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        if let Some(text) = chunk.delta {
-            print!("{text}");
+    while let Some(event) = stream.next().await {
+        match event? {
+            ChatEvent::Delta(text) => print!("{text}"),
+            ChatEvent::ToolCallDelta(deltas) => eprintln!("\n[tool calls: {deltas:?}]"),
+            ChatEvent::Finish(reason) => eprintln!("\n[finish: {reason:?}]"),
         }
     }
     println!();

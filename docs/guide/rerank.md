@@ -19,7 +19,7 @@
 
 ```toml
 [dependencies]
-lmkit = { version = "0.2", features = ["aliyun", "rerank"] }
+lmkit = { version = "0.1", features = ["aliyun", "rerank"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 ```
 

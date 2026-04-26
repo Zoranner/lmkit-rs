@@ -6,8 +6,8 @@
 
 ```bash
 # 克隆仓库
-git clone https://github.com/your-repo/lmkit.git
-cd lmkit
+git clone https://github.com/Zoranner/lmkit-rs.git
+cd lmkit-rs
 
 # 运行测试（全 feature）
 cargo test --all-features
